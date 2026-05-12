@@ -121,7 +121,6 @@ text(camPos(1), camPos(2), camPos(3) + 0.1, ' Objectif Caméra');
 % 2. Configurer la vue "Première Personne" (L'œil de MATLAB)
 % On place l'œil exactement à la position définie dans cameraPose
 campos(ax, tform2trvec(cameraPose));
-                                                                                                                                                        nn
 % On définit la cible du regard en utilisant la direction Z de la matrice
 % (La caméra regarde toujours vers son propre axe Z local)
 directionRegard = tform2rotm(cameraPose) * [0; 0; 1]; 
