@@ -1,0 +1,12 @@
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+numpy>=1.24.0
+scipy>=1.11.0
+matplotlib>=3.7.0
+
+# --- Optionnel : YOLO (détection générique) ---
+# ultralytics>=8.0.0
+
+# --- Optionnel : Intel RealSense D4xx (RGB-D) ---
+# pip install pyrealsense2
+# pyrealsense2>=2.54.0
