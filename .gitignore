@@ -1,3 +1,6 @@
 # ici tous les fichiers et dossiers à ignorer par git
 .DS_Store
 yolov8n.pt
+/ros2/build/
+/ros2/install/
+/ros2/log/
