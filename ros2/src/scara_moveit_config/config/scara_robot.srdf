@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  scara_robot.srdf  —  Semantic Robot Description Format
+  MoveIt2 — Robot SCARA 4-DOF
+
+  Groupe de planification : scara_arm  (joint1 → joint4)
+  État de repos         : home  [θ1=0, d2=0.1m, θ3=−45°, θ4=0]
+  Liaison virtuelle     : fixed  world → base_link
+-->
+<robot name="scara_robot">
+
+  <!-- Liaison virtuelle entre le monde et la base du robot -->
+  <virtual_joint name="virtual_joint"
+                 type="fixed"
+                 parent_frame="world"
+                 child_link="base_link"/>
+
+  <!-- ────────────────────────── Groupe de planification ────────────────── -->
+  <group name="scara_arm">
+    <joint name="joint1"/>
+    <joint name="joint2"/>
+    <joint name="joint3"/>
+    <joint name="joint4"/>
+  </group>
+
+  <!-- ────────────────────────── Effecteur final ────────────────────────── -->
+  <end_effector name="gripper"
+                parent_link="wrist_link"
+                group="scara_arm"/>
+
+  <!-- ────────────────────────── États prédéfinis ──────────────────────── -->
+
+  <!-- Position de repos (q0) -->
+  <group_state name="home" group="scara_arm">
+    <joint name="joint1" value="0"/>
+    <joint name="joint2" value="0.1"/>
+    <joint name="joint3" value="-0.7854"/>   <!-- −45° -->
+    <joint name="joint4" value="0"/>
+  </group_state>
+
+  <!-- Position déployée (bras tendu) -->
+  <group_state name="extended" group="scara_arm">
+    <joint name="joint1" value="0"/>
+    <joint name="joint2" value="0.1"/>
+    <joint name="joint3" value="0"/>
+    <joint name="joint4" value="0"/>
+  </group_state>
+
+  <!-- Position repliée (encombrement minimal) -->
+  <group_state name="folded" group="scara_arm">
+    <joint name="joint1" value="0"/>
+    <joint name="joint2" value="0"/>
+    <joint name="joint3" value="-1.5708"/>   <!-- −90° -->
+    <joint name="joint4" value="0"/>
+  </group_state>
+
+  <!-- ────────────────────────── Paires de collisions désactivées ────────  -->
+  <!--
+    Ces paires sont adjacentes dans la chaîne cinématique, les collisions
+    entre elles sont impossibles géométriquement et doivent être ignorées.
+  -->
+  <disable_collisions link1="base_link"        link2="shoulder_link"   reason="Adjacent"/>
+  <disable_collisions link1="shoulder_link"    link2="arm_slide_link"  reason="Adjacent"/>
+  <disable_collisions link1="arm_slide_link"   link2="forearm_link"    reason="Adjacent"/>
+  <disable_collisions link1="forearm_link"     link2="wrist_link"      reason="Adjacent"/>
+  <disable_collisions link1="wrist_link"       link2="end_effector_link" reason="Adjacent"/>
+  <!-- Liens non adjacents mais en collision possible à certaines configs -->
+  <disable_collisions link1="base_link"        link2="arm_slide_link"  reason="Never"/>
+  <disable_collisions link1="shoulder_link"    link2="forearm_link"    reason="Never"/>
+
+</robot>

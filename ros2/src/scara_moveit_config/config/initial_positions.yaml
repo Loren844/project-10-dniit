@@ -1,0 +1,10 @@
+# initial_positions.yaml — Configuration initiale (position de repos)
+# Robot SCARA 4-DOF  (Phase 4)
+#
+# q0 = [θ1=0°, d2=100mm, θ3=−45°, θ4=0°]
+
+initial_positions:
+  joint1: 0.0
+  joint2: 0.1
+  joint3: -0.7854
+  joint4: 0.0

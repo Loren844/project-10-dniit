@@ -1,0 +1,51 @@
+# ros2_controllers.yaml — Configuration ros2_control
+# Robot SCARA 4-DOF  (Phase 4)
+# Convention DH : [theta1, d2, theta3, theta4]
+#   theta1 = joint_1theta  (revolute Z)
+#   d2     = joint_1z      (prismatic Z)
+#   theta3 = joint3        (revolute -Z)
+#   theta4 = joint4        (revolute -Z)
+
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+    # Ne pas declarer les types ici : gz_ros2_control les pre-charge sinon
+    # dans un etat inconsistant. Le spawner avec -t s'en charge.
+
+joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - joint_1theta
+      - joint_1z
+      - joint3
+      - joint4
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+
+    allow_partial_joints_goal: false
+    open_loop_control: true
+    allow_nonzero_velocity_at_trajectory_end: false
+
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.0
+      joint_1theta:
+        trajectory: 0.1
+        goal: 0.05
+      joint_1z:
+        trajectory: 0.005
+        goal: 0.002
+      joint3:
+        trajectory: 0.1
+        goal: 0.05
+      joint4:
+        trajectory: 0.15
+        goal: 0.05

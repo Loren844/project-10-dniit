@@ -1,0 +1,16 @@
+# moveit_controllers.yaml — Interface MoveIt2 ↔ ros2_control
+# Robot SCARA 4-DOF  (Phase 4)
+
+moveit_simple_controller_manager:
+  controller_names:
+    - joint_trajectory_controller
+
+joint_trajectory_controller:
+  type: FollowJointTrajectory
+  action_ns: follow_joint_trajectory
+  default: true
+  joints:
+    - joint1
+    - joint2
+    - joint3
+    - joint4
