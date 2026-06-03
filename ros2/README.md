@@ -65,7 +65,8 @@ ros2/
 │       └── scara_visual_servoing/
 │           ├── vs_node.py             # Nœud asservissement visuel PBVS
 │           ├── sim_target_node.py     # Simulation tapis roulant
-│           └── gazebo_bridge.py       # Initialisation pose home
+│           ├── gazebo_bridge.py       # Initialisation pose home
+│           └── vision_node.py         # [Phase 5] Détection YOLO + écriture PLC snap7
 ├── rebuild.sh                         # Script de rebuild complet
 └── README.md                          # Ce fichier
 ```
@@ -231,6 +232,40 @@ sa position dans Gazebo avec l'état logique du scénario.
 **Déplacement sphère Gazebo** — deux approches par ordre de priorité :
 1. **`ignition.transport` Python** (bindings in-process, même partition transport que Gazebo — fiable)
 2. **Subprocess `ign service`** (fallback, timeout 2000 ms)
+
+### `vision_node.py` — Détection YOLO + Interface PLC (Phase 5)
+
+Nœud de vision pour le robot **réel**. S'abonne au flux caméra ROS2, détecte les objets
+cibles avec YOLOv8, calcule leurs coordonnées dans le repère monde et envoie le résultat
+directement à un **automate Siemens** (API S7) via le protocole **snap7**.
+
+- **Abonnement** : `/camera/image_raw` (Image)
+- **Publication** : `/yolo/detections` (Image annotée, 30 Hz)
+- **Modèle YOLO** : `yolov8n.pt` (classes COCO utilisées : 32=ball, 47=cup, 49=orange)
+- **Calcul de position monde** :
+
+  ```
+  x_cam = (cx_px − 320) × z_dist / f        (f = 554.25 px, z_dist = 0.75 m)
+  y_cam = (cy_px − 240) × z_dist / f
+  world_x = cam_x − y_cam                   (cam_x = 0.55 m)
+  world_y = cam_y − x_cam                   (cam_y = 0.0 m)
+  world_z = 0.05 m                           (hauteur tapis fixe)
+  ```
+
+- **Écriture PLC** : 3 floats big-endian (12 octets) → **DB1, offset 0** (X, Y, Z) via `snap7.client.Client`
+- **Reconnexion automatique** : en cas d'échec d'écriture, tentative de reconnexion immédiate
+
+**Prérequis supplémentaires (robot réel)** :
+
+```bash
+pip install python-snap7       # bindings snap7
+# snap7 doit être compilé sur le système (libsnap7.so)
+# PLC Siemens accessible à l'adresse 192.168.0.10 (rack=0, slot=1)
+```
+
+> **Note** : ce nœud est conçu pour le robot physique et ne fonctionne pas en simulation
+> pure (pas de Gazebo, pas de `/vs/target_pose`). Il remplace la logique de
+> `sim_target_node.py` pour fournir la position cible depuis la vision réelle.
 
 ### `gazebo_bridge.py` — Initialisation
 

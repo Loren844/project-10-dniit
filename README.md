@@ -37,23 +37,31 @@ Le robot cible est un **SCARA** (*Selective Compliance Assembly Robot Arm*) à 3
 │   │   └── animate_robot.m
 │   └── phase3/                ← Phase 3 : Simulation boucle fermée MATLAB
 │       └── main_phase3.m
-└── python/
-    ├── phase2/                ← Phase 2 : Reconnaissance d'objets et estimation de pose
-    │   ├── main_phase2.py
-    │   ├── camera_calibration.py
-    │   ├── detect_objects.py
-    │   ├── pose_estimation.py
-    │   ├── robot_transform.py
-    │   ├── kalman_tracker.py
-    │   ├── realsense_capture.py
-    │   ├── generate_markers.py
-    │   └── requirements.txt
-    └── phase3/                ← Phase 3 : Contrôleur d'asservissement visuel
-        ├── main_phase3.py         ← Pipeline principal (machine à états, CLI)
-        ├── vs_controller.py       ← Contrôleur PBVS + cinématique SCARA
-        ├── visual_error.py        ← Calcul erreur visuelle et matrice d'interaction
-        ├── gripper_controller.py  ← Séquenceur pick-and-place (9 états)
-        └── simulation_gui.py      ← Simulation 2D interactive (matplotlib)
+├── python/
+│   ├── phase2/                ← Phase 2 : Reconnaissance d'objets et estimation de pose
+│   │   ├── main_phase2.py
+│   │   ├── camera_calibration.py
+│   │   ├── detect_objects.py
+│   │   ├── pose_estimation.py
+│   │   ├── robot_transform.py
+│   │   ├── kalman_tracker.py
+│   │   ├── realsense_capture.py
+│   │   ├── generate_markers.py
+│   │   └── requirements.txt
+│   └── phase3/                ← Phase 3 : Contrôleur d'asservissement visuel
+│       ├── main_phase3.py         ← Pipeline principal (machine à états, CLI)
+│       ├── vs_controller.py       ← Contrôleur PBVS + cinématique SCARA
+│       ├── visual_error.py        ← Calcul erreur visuelle et matrice d'interaction
+│       ├── gripper_controller.py  ← Séquenceur pick-and-place (9 états)
+│       └── simulation_gui.py      ← Simulation 2D interactive (matplotlib)
+└── ros2/
+    └── src/
+        └── scara_visual_servoing/
+            └── scara_visual_servoing/
+                ├── vs_node.py             ← Phase 4 : Asservissement visuel ROS2 (PBVS)
+                ├── sim_target_node.py     ← Phase 4 : Simulation tapis roulant Gazebo
+                ├── gazebo_bridge.py       ← Phase 4 : Initialisation pose home
+                └── vision_node.py         ← Phase 5 : Détection YOLO + écriture PLC (snap7)
 ```
 
 ---
@@ -68,7 +76,7 @@ Le projet est découpé en **5 phases** séquentielles. Voir [plan_stage.md](pla
 | **2** | Reconnaissance d'objets et estimation de pose (Python, OpenCV) | ✅ Complété |
 | **3** | Asservissement visuel PBVS (Python + MATLAB) | ✅ Complété |
 | **4** | Intégration ROS2 + Gazebo Ignition Fortress — simulation pick-and-place | ✅ Complété |
-| **5** | Tests expérimentaux sur robot réel | 🔲 À faire |
+| **5** | Tests expérimentaux sur robot réel (vision YOLO + PLC Siemens) | 🚧 En cours |
 
 ---
 
