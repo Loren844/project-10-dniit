@@ -7,34 +7,34 @@ dans un nœud ROS2 Humble.
 
 Modes de fonctionnement
 ───────────────────────
-  sim       : cible virtuelle publiée par sim_target_node (sans caméra)
-  live      : flux webcam / ArUco (nécessite cv_bridge)
+  sim       : virtual target published by sim_target_node (no camera)
+  live      : webcam / ArUco feed (requires cv_bridge)
   realsense : flux RealSense D435 via topic ROS2 (topic /camera/color/image_raw)
 
-Topics abonnés
+Subscribed topics
 ──────────────
-  /joint_states           (sensor_msgs/JointState)   — état courant du robot
-  /vs/target_pose         (geometry_msgs/PoseStamped) — cible simulée (mode sim)
-  /camera/color/image_raw (sensor_msgs/Image)         — flux caméra (mode live)
+  /joint_states           (sensor_msgs/JointState)   — current robot state
+  /vs/target_pose         (geometry_msgs/PoseStamped) — simulated target (sim mode)
+  /camera/color/image_raw (sensor_msgs/Image)         — camera feed (live mode)
 
-Topics publiés
+Published topics
 ──────────────
   /joint_trajectory_controller/joint_trajectory
-                          (trajectory_msgs/JointTrajectory) — commande position
-  /vs/status              (std_msgs/String)                 — état de la boucle VS
+                          (trajectory_msgs/JointTrajectory) — position command
+  /vs/status              (std_msgs/String)                 — VS loop state
   /vs/error               (geometry_msgs/Vector3)           — norme erreur (m)
 
-Paramètres
+Parameters
 ──────────
-  mode          : str  "sim" | "live" | "realsense"  (défaut : "sim")
-  dt            : float  période de contrôle (s)     (défaut : 0.033 ≈ 30 Hz)
-  gain          : float  gain λ initial VS            (défaut : 0.5)
-  adaptive_gain : bool   gain adaptatif Chaumette     (défaut : true)
-  marker_size   : float  taille marqueur ArUco (m)    (défaut : 0.08)
-  cam_index     : int    index caméra USB             (défaut : 0)
-  target_x      : float  cible simulée X (m)          (défaut : 0.35)
-  target_y      : float  cible simulée Y (m)          (défaut : 0.05)
-  target_z      : float  cible simulée Z (m)          (défaut : -0.12)
+  mode          : str  "sim" | "live" | "realsense"  (default: "sim")
+  dt            : float  control period (s)       (default: 0.033 ≈ 30 Hz)
+  gain          : float  initial VS gain λ          (default: 0.5)
+  adaptive_gain : bool   Chaumette adaptive gain    (default: true)
+  marker_size   : float  ArUco marker size (m)      (default: 0.08)
+  cam_index     : int    USB camera index           (default: 0)
+  target_x      : float  simulated target X (m)     (default: 0.35)
+  target_y      : float  simulated target Y (m)     (default: 0.05)
+  target_z      : float  simulated target Z (m)     (default: -0.12)
 """
 from __future__ import annotations
 
@@ -43,6 +43,8 @@ import sys
 import math
 import time
 from pathlib import Path
+import snap7
+import struct
 
 import numpy as np
 
@@ -71,19 +73,19 @@ from gripper_controller import PickPlaceSequencer, PickPlaceState
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Cinématique directe (FK) — SCARA 4-DOF
+# Forward Kinematics (FK) — 4-DOF SCARA
 # ═══════════════════════════════════════════════════════════════════════════
 
 def scara_fk(q: np.ndarray, params: ScaraParams) -> tuple[np.ndarray, np.ndarray]:
     """
-    Cinématique directe analytique.
+    Analytical forward kinematics.
 
-    Retourne (t [3], R [3×3]) :
+    Returns (t [3], R [3×3]):
       t = [px, py, pz]
-      R = Rot_Z(θ1+θ3+θ4)   convention SCARA, cohérente avec la Jacobienne
+      R = Rot_Z(θ1+θ3+θ4)   SCARA convention, consistent with the Jacobian
           (dω/dθ1 = dω/dθ3 = dω/dθ4 = [0,0,1] ⇒ Ω = θ1+θ3+θ4)
 
-    Vérification :
+    Verification:
       px = a2·cos(θ1) + a3·cos(θ1+θ3)
       py = a2·sin(θ1) + a3·sin(θ1+θ3)
       pz = d2 − d3 − d4
@@ -207,7 +209,7 @@ class ScaraVSNode(Node):
                 self._bridge = CvBridge()
                 self.create_subscription(
                     Image, topic, self._cb_image, qos_best_effort)
-                self.get_logger().info(f'Mode caméra activé — topic : {topic}')
+                self.get_logger().info(f'Camera mode activated — topic: {topic}')
             except ImportError:
                 self.get_logger().warn(
                     'cv_bridge non disponible — basculement en mode sim.')
@@ -233,31 +235,42 @@ class ScaraVSNode(Node):
         self._converged  = False
 
         self.get_logger().info(
-            f'ScaraVSNode démarré — mode={mode}, dt={self.dt:.3f}s, '
+            f'ScaraVSNode started — mode={mode}, dt={self.dt:.3f}s, '
             f'gain={gain}, adaptive={adaptive}'
         )
+
+        self.plc = snap7.Client()
+        self.connect_to_plc()
 
     # ──────────────────────────────────────────────────────────────────────
     # Initialisations
     # ──────────────────────────────────────────────────────────────────────
 
+    def connect_to_plc(self):
+        try:
+            self.plc.disconnect()
+            self.plc.connect('192.168.0.10', 0, 1)
+            self.get_logger().info("CONNECTED TO PLC")
+        except Exception as e:
+            self.get_logger().error(f"CONNECTION ERROR: {e}")
+
     def _load_default_target(self):
-        """Charge la cible depuis les paramètres (mode sim)."""
+        """Loads the target from parameters (sim mode)."""
         tx = self.get_parameter('target_x').value
         ty = self.get_parameter('target_y').value  # conveyor Y (0.15)
         tz = self.get_parameter('target_z').value  # pick height (0.05)
         self.t_des = np.array([tx, ty, tz])
-        # Orientation désirée : outil pointant vers le bas, rotation nulle
+        # Desired orientation: tool pointing down, zero rotation
         self.R_des = np.eye(3)
         self.get_logger().info(
-            f'Cible simulée : [{tx:.3f}, {ty:.3f}, {tz:.3f}] m')
+            f'Simulated target: [{tx:.3f}, {ty:.3f}, {tz:.3f}] m')
 
     # ──────────────────────────────────────────────────────────────────────
     # Callbacks
     # ──────────────────────────────────────────────────────────────────────
 
     def _cb_joint_states(self, msg: JointState):
-        """Met à jour l'état articulaire courant depuis /joint_states."""
+        """Updates the current joint state from /joint_states."""
         pos_map = dict(zip(msg.name, msg.position))
         for i, name in enumerate(self.JOINT_NAMES):
             if name in pos_map:
@@ -265,7 +278,7 @@ class ScaraVSNode(Node):
         self._joint_state_received = True
 
     def _cb_target_pose(self, msg: PoseStamped):
-        """Met à jour la pose cible depuis /vs/target_pose."""
+        """Updates the target pose from /vs/target_pose."""
         # Ignorer si le robot n'est pas en phase de suivi
         if self._phase not in ('TRACKING',):
             return
@@ -273,8 +286,8 @@ class ScaraVSNode(Node):
         new_t = np.array([p.x, p.y, p.z])
         quat = msg.pose.orientation
         new_R = _quat_to_rot(quat.x, quat.y, quat.z, quat.w)
-        # Réinitialiser VS seulement si la cible a sauté > 50 mm
-        # (ex: reset tapis apres depot). Ne pas réinitialiser pour les
+        # Reset VS only if the target jumped > 50 mm
+        # (e.g. conveyor reset after drop-off). Do not reset for small
         # micro-déplacements du tapis (2 mm/tick a 20 Hz) — cela empecherait
         # la machine d'etats de passer en WAIT_PICK.
         if self._converged and self.t_des is not None:
@@ -424,6 +437,38 @@ class ScaraVSNode(Node):
         q_next[3] = np.clip(q_next[3],
                             self.params.q_min[3], self.params.q_max[3])
 
+        # ── Écriture de la commande au PLC via snap7 ───────────────────────
+
+        phases = {'TRACKING': 0, 'WAIT_PICK': 1, 'CARRYING': 2, 'WAIT_DEP': 3}
+        etat_robot = phases.get(self._phase, 0)
+        
+        sols = ik_solutions(self.t_des[0], self.t_des[1], self.params)
+        
+        if len(sols) > 0:
+            q_final = sols[0]
+            # q_final[0] est l'angle de l'épaule, q_final[1] est l'angle du coude
+            theta1_deg = math.degrees(q_final[0])
+            theta3_deg = math.degrees(q_final[1])
+            
+            # Calcul de l'extension de l'axe Z (d2) selon la cinématique SCARA
+            d2_target = self.t_des[2] + self.params.d3 + self.params.d4
+            z_mm = d2_target * 1000.0
+        else:
+            theta1_deg = math.degrees(self.q[0])
+            z_mm = self.q[1] * 1000.0
+            theta3_deg = math.degrees(self.q[2])
+
+        data = bytearray(16)
+        struct.pack_into('>f', data, 0, theta1_deg)
+        struct.pack_into('>f', data, 4, z_mm)
+        struct.pack_into('>f', data, 8, theta3_deg)
+        struct.pack_into('>i', data, 12, etat_robot)
+
+        try:
+            self.plc.db_write(1, 0, data)
+        except Exception:
+            self.connect_to_plc()
+
         # ── Publication de la trajectoire ─────────────────────────────────
         self._publish_trajectory(q_next)
 
@@ -528,8 +573,10 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
+        node.plc.disconnect()
         node.destroy_node()
         rclpy.try_shutdown()
+        
 
 
 if __name__ == '__main__':

@@ -1,46 +1,46 @@
-# MATLAB — Simulation robot SCARA 4-DOF
+# MATLAB — 4-DOF SCARA Robot Simulation
 
-Ce dossier contient toute la simulation MATLAB du projet, découpée en deux phases.
+This folder contains all MATLAB simulation code for the project, split into two phases.
 
 ```
 matlab/
-├── phase1/    ← Modélisation, cinématique, trajectoires, simulation PID
-└── phase3/    ← Validation en boucle fermée du contrôleur PBVS
+├── phase1/    ← Modelling, kinematics, trajectories, PID simulation
+└── phase3/    ← Closed-loop validation of the PBVS controller
 ```
 
-**Prérequis** : MATLAB R2021b ou supérieur. Aucune toolbox requise — tout est implémenté from scratch (pas de Robotics Toolbox).
+**Requirements**: MATLAB R2021b or later. No toolbox required — everything is implemented from scratch (no Robotics Toolbox).
 
 ---
 
-## Phase 1 — Modélisation et simulation du robot
+## Phase 1 — Robot Modelling and Simulation
 
-### Objectif
+### Objective
 
-Construire de zéro le modèle complet du SCARA 4-DOF : cinématique directe/inverse, analyse du workspace, génération de trajectoires, simulation PID en boucle fermée, animation 3D.
+Build the complete 4-DOF SCARA model from scratch: forward/inverse kinematics, workspace analysis, trajectory generation, closed-loop PID simulation, 3D animation.
 
-### Lancer
+### Run
 
 ```matlab
 cd matlab/phase1
-clear                % vider le cache des fonctions MATLAB
-main_phase1          % exécution complète : 7 étapes + rapport console + figures
-main_phase1(false)   % console seulement, sans figures
+clear                % clear MATLAB function cache
+main_phase1          % full run: 7 steps + console report + figures
+main_phase1(false)   % console only, no figures
 ```
 
-Durée typique : ~5 secondes. Génère 8 figures + rapport console structuré.
+Typical runtime: ~5 seconds. Generates 8 figures + structured console report.
 
-### Modèle robot (DH)
+### Robot Model (DH)
 
-Topologie : **θ1 (R) → d2 (P) → θ3 (R) → θ4 (R)**
+Topology: **θ1 (R) → d2 (P) → θ3 (R) → θ4 (R)**
 
-| Lien | θ | a [m] | α [°] | d [m] |
+| Link | θ | a [m] | α [°] | d [m] |
 |------|---|-------|-------|-------|
 | 1 | θ1 var | 0 | 0° | 0 |
-| 2 | 0° fixe | **0.300** | 0° | d2 var |
+| 2 | 0° fixed | **0.300** | 0° | d2 var |
 | 3 | θ3 var | **0.160** | 180° | −0.150 |
 | 4 | θ4 var | 0 | 0° | 0.059 |
 
-Butées articulaires :
+Joint limits:
 
 | Joint | Min | Max |
 |---|---|---|
@@ -49,26 +49,26 @@ Butées articulaires :
 | θ3 | −90° | +90° |
 | θ4 | −180° | +180° |
 
-### Fichiers
+### Files
 
 #### `robot_parameters.m`
-Définit la structure `robot` complète utilisée par tous les autres scripts.
+Defines the complete `robot` struct used by all other scripts.
 
-Contient : paramètres DH (a, alpha, d, theta_offset), limites articulaires, gains PID par axe, paramètres dynamiques (inertie effective `J_eff`, frottement visqueux `B_vis`).
+Contains: DH parameters (a, alpha, d, theta_offset), joint limits, per-axis PID gains, dynamic parameters (effective inertia `J_eff`, viscous friction `B_vis`).
 
 ```matlab
 robot = robot_parameters();
 % robot.a2, robot.a3, robot.d3, robot.d4
 % robot.q_min, robot.q_max
-% robot.Kp, robot.Ki, robot.Kd  (4×1 vecteurs)
+% robot.Kp, robot.Ki, robot.Kd  (4×1 vectors)
 ```
 
 #### `forward_kinematics.m`
-Cinématique directe par composition des matrices DH.
+Forward kinematics by DH matrix composition.
 
-Calcule la position et l'orientation de l'effecteur pour une configuration `q = [θ1, d2, θ3, θ4]`.
+Computes end-effector position and orientation for configuration `q = [θ1, d2, θ3, θ4]`.
 
-Formules analytiques :
+Analytical formulas:
 ```
 Px = a2·cos(θ1) + a3·cos(θ1+θ3)
 Py = a2·sin(θ1) + a3·sin(θ1+θ3)
@@ -77,194 +77,194 @@ Pz = d2 − d3 − d4
 
 ```matlab
 [T_end, T_all] = forward_kinematics(robot, q)
-% T_end : matrice homogène 4×4 effecteur→base
-% T_all : {T01, T02, T03, T04} (toutes les transformations intermédiaires)
+% T_end : 4×4 homogeneous matrix, end-effector→base
+% T_all : {T01, T02, T03, T04} (all intermediate transforms)
 ```
 
 #### `inverse_kinematics.m`
-Cinématique inverse analytique — formules fermées (pas d'itération).
+Analytical inverse kinematics — closed-form solution (no iteration).
 
-1. cos(θ3) = (Px² + Py² − a2² − a3²) / (2·a2·a3) → 2 solutions coude haut/bas
-2. θ1 = atan2(...) depuis les deux solutions θ3
-3. θ4 = −θ1 − θ3 (orientation finale maintenue à 0°)
+1. cos(θ3) = (Px² + Py² − a2² − a3²) / (2·a2·a3) → 2 solutions (elbow up/down)
+2. θ1 = atan2(...) from both θ3 solutions
+3. θ4 = −θ1 − θ3 (end-effector orientation held at 0°)
 4. d2 = Pz + d3 + d4
 
-Erreur résiduelle = 0.0000 mm (solution exacte).
+Residual error = 0.0000 mm (exact solution).
 
 ```matlab
 [q_sol, success, err_mm] = inverse_kinematics(robot, T_des, q0)
-% q_sol : [θ1, d2, θ3, θ4] en rad/m
+% q_sol : [θ1, d2, θ3, θ4] in rad/m
 % success : bool
-% err_mm : erreur de position résiduelle en mm
+% err_mm : residual position error in mm
 ```
 
 #### `workspace_analysis.m`
-Visualise l'espace de travail par Monte Carlo (30 000 configurations aléatoires).
+Visualises the SCARA workspace via Monte Carlo (30 000 random configurations).
 
-Résultats attendus :
-- **XY** : anneau toroïdal r ∈ [340, 460] mm (zone morte si |θ3| > 90°)
-- **Z** : plan horizontal variable z ∈ [−209, −9] mm
+Expected results:
+- **XY**: toroidal ring r ∈ [340, 460] mm (dead zone when |θ3| > 90°)
+- **Z**: horizontal plane z ∈ [−209, −9] mm
 
-Génère 4 figures : vue 3D, projection XY, projection XZ, structure SCARA.
+Generates 4 figures: 3D view, XY projection, XZ projection, SCARA arm structure.
 
 ```matlab
 workspace_analysis(robot)
-workspace_analysis(robot, 50000)  % plus d'échantillons
+workspace_analysis(robot, 50000)  % more samples
 ```
 
 #### `joint_space_trajectory.m`
-Trajectoire point-à-point dans l'espace articulaire.
+Point-to-point trajectory in joint space.
 
-Trois profils disponibles :
+Three available profiles:
 
-| Profil | Continuité | Usage |
+| Profile | Continuity | Use |
 |---|---|---|
-| `cubic` | C¹ (vitesse) | Standard, simple |
-| `quintic` | C² (accélération) | Mouvement le plus doux |
-| `trapezoidal` | C⁰ | Proche variateurs industriels |
+| `cubic` | C¹ (velocity) | Standard, simple |
+| `quintic` | C² (acceleration) | Smoothest motion |
+| `trapezoidal` | C⁰ | Close to industrial drives |
 
 ```matlab
 traj = joint_space_trajectory(q_start, q_end, T_total, dt, 'quintic')
 % traj.q    : (N×4) positions
-% traj.dq   : (N×4) vitesses
-% traj.ddq  : (N×4) accélérations
+% traj.dq   : (N×4) velocities
+% traj.ddq  : (N×4) accelerations
 ```
 
 #### `cartesian_trajectory.m`
-Trajectoire linéaire dans l'espace cartésien (l'effecteur suit une ligne droite).
+Linear trajectory in Cartesian space (end-effector follows a straight line).
 
-- Position : interpolation linéaire avec lissage cubique
-- Orientation : interpolation SLERP (Spherical Linear Interpolation)
-- IK appelée à chaque point pour obtenir les angles articulaires
+- Position: linear interpolation with cubic smoothing
+- Orientation: SLERP (Spherical Linear Interpolation)
+- IK called at each point to obtain joint angles
 
 ```matlab
 traj = cartesian_trajectory(robot, p_start, p_end, R_start, R_end, T_total, dt)
 ```
 
 #### `plot_trajectory.m`
-Visualise une trajectoire générée.
+Visualises a generated trajectory.
 
-- Trajectoire **articulaire** : 3 subplots (positions °, vitesses °/s, accélérations °/s²)
-- Trajectoire **cartésienne** : coordonnées XYZ vs temps + chemin 3D
+- **Joint-space** trajectory: 3 subplots (positions °, velocities °/s, accelerations °/s²)
+- **Cartesian** trajectory: XYZ coordinates vs time + 3D path
 
 ```matlab
 plot_trajectory(traj)
 ```
 
 #### `pid_simulation.m`
-Simulation boucle fermée avec contrôleur PID + feedforward sur chaque axe.
+Closed-loop simulation with PID + feedforward controller on each axis.
 
-Modèle dynamique simplifié (1er ordre par axe) :
+Simplified dynamic model (1st order per axis):
 ```
 J_eff · q̈ = τ − B_vis · q̇
 ```
 
-Loi de commande :
+Control law:
 ```
 τ = J_eff·q̈_ref + B_vis·q̇_ref   (feedforward)
   + Kp·e + Ki·∫e·dt + Kd·(q̇_ref − q̇)   (PID)
 ```
 
-Protections : anti-windup, saturation couple, butées articulaires.  
-Intégration par méthode de Heun (RK2).
+Safety features: anti-windup, torque saturation, joint limits.
+Integration via Heun's method (RK2).
 
 ```matlab
 result = pid_simulation(robot, traj, Kp, Ki, Kd)
-% result.q_actual   : positions simulées
-% result.e          : erreurs de suivi
-% result.rmse       : RMSE par axe
+% result.q_actual   : simulated positions
+% result.e          : tracking errors
+% result.rmse       : RMSE per axis
 ```
 
-Résultats Phase 1 : RMSE < 0.5° (axes rotoïdes), < 0.5 mm (axe prismatique).
+Phase 1 results: RMSE < 0.5° (revolute axes), < 0.5 mm (prismatic axis).
 
 #### `animate_robot.m`
-Animation 3D du SCARA le long d'une trajectoire.
+3D animation of the SCARA along a trajectory.
 
-Reconstruit les segments physiques (colonne verticale, bras horizontaux) pour un rendu réaliste. Affiche la trace de l'effecteur.
+Reconstructs physical arm segments (vertical column, horizontal links) for a realistic rendering. Displays end-effector trail.
 
 ```matlab
 animate_robot(robot, traj)
-animate_robot(robot, traj, 'speed', 2)      % 2× plus rapide
-animate_robot(robot, traj, 'trail', false)  % sans trace
+animate_robot(robot, traj, 'speed', 2)      % 2× faster
+animate_robot(robot, traj, 'trail', false)  % no trail
 ```
 
 #### `main_phase1.m`
-Orchestre les 7 étapes dans l'ordre avec rapport console structuré :
+Orchestrates all 7 steps in order with a structured console report:
 
-1. Chargement paramètres robot
-2. Test cinématique directe (validation formules analytiques)
-3. Test cinématique inverse (erreur résiduelle = 0 mm)
-4. Analyse workspace (Monte Carlo)
-5. Génération trajectoire articulaire quintic
-6. Simulation PID boucle fermée
-7. Animation 3D
+1. Load robot parameters
+2. Test forward kinematics (validate analytical formulas)
+3. Test inverse kinematics (residual error = 0 mm)
+4. Workspace analysis (Monte Carlo)
+5. Generate quintic joint-space trajectory
+6. Closed-loop PID simulation
+7. 3D animation
 
-### Flux de données
+### Data Flow
 
 ```
 robot_parameters
    ├── forward_kinematics → workspace_analysis
    │         └── inverse_kinematics ← cartesian_trajectory
    ├── joint_space_trajectory → pid_simulation → animate_robot
-   └── main_phase1  (orchestre tout)
+   └── main_phase1  (orchestrates everything)
 ```
 
 ---
 
-## Phase 3 — Validation MATLAB du contrôleur PBVS
+## Phase 3 — MATLAB Closed-Loop Validation of the PBVS Controller
 
-### Objectif
+### Objective
 
-Valider en simulation MATLAB la convergence de la boucle d'asservissement visuel PBVS avant déploiement. Tester les cas difficiles (tapis roulant, compensation Kalman, gain adaptatif).
+Validate PBVS visual servoing loop convergence in MATLAB simulation before deployment. Test edge cases (conveyor belt, Kalman latency compensation, adaptive gain).
 
-Ce script est **complémentaire** à la simulation Python (`python/phase3/simulation_gui.py`) : il permet de valider les mêmes algorithmes dans l'environnement MATLAB avec un affichage de convergence détaillé.
+This script is **complementary** to the Python simulation (`python/phase3/simulation_gui.py`): it validates the same algorithms in the MATLAB environment with detailed convergence plots.
 
-### Lancer
+### Run
 
 ```matlab
 cd matlab/phase3
-% Ajouter phase1 au path (IK, FK partagés)
+% Add phase1 to path (shared IK, FK)
 addpath('../phase1')
 main_phase3
 ```
 
-Durée typique : ~2 secondes. Génère 6 figures de convergence.
+Typical runtime: ~2 seconds. Generates 6 convergence figures.
 
-### Configurer la simulation (en tête du script)
+### Configure the simulation (top of the script)
 
-| Paramètre | Défaut | Description |
+| Parameter | Default | Description |
 |---|---|---|
-| `dt` | 0.033 s | Pas de temps (≈ 30 Hz) |
-| `T_sim` | 15 s | Durée maximale |
-| `lambda_nom` | 0.5 | Gain nominal VS |
-| `lambda_min/max` | 0.05 / 2.0 | Bornes du gain adaptatif |
-| `adaptive` | true | Gain sigmoïde selon ‖e‖ |
-| `thr_t_mm` | 2.0 mm | Seuil convergence position |
-| `thr_r_deg` | 1.0° | Seuil convergence orientation |
-| `q0` | [0.5, 0.10, −0.30, 0.20] | Configuration initiale (rad/m) |
-| `t_des` | [0.350, 0.050, −0.150] m | Position cible |
-| `use_conveyor` | false | Activer le tapis roulant |
-| `v_conveyor` | [0.05, 0, 0] m/s | Vitesse du tapis |
+| `dt` | 0.033 s | Time step (~30 Hz) |
+| `T_sim` | 15 s | Maximum simulation duration |
+| `lambda_nom` | 0.5 | Nominal VS gain |
+| `lambda_min/max` | 0.05 / 2.0 | Adaptive gain bounds |
+| `adaptive` | true | Sigmoid gain as a function of ‖e‖ |
+| `thr_t_mm` | 2.0 mm | Position convergence threshold |
+| `thr_r_deg` | 1.0° | Orientation convergence threshold |
+| `q0` | [0.5, 0.10, −0.30, 0.20] | Initial configuration (rad/m) |
+| `t_des` | [0.350, 0.050, −0.150] m | Target position |
+| `use_conveyor` | false | Enable conveyor belt |
+| `v_conveyor` | [0.05, 0, 0] m/s | Conveyor speed |
 
-### Fichier
+### File
 
 #### `main_phase3.m`
-Script autonome (toutes les fonctions en bas du fichier ou importées depuis `phase1/`).
+Self-contained script (all functions at the bottom or imported from `phase1/`).
 
-Étapes de la simulation :
-1. Chargement paramètres robot (depuis `phase1/robot_parameters.m`)
-2. Initialisation contrôleur PBVS (gain adaptatif, matrice d'interaction)
-3. Boucle de simulation (FK → erreur → commande VS → saturation → intégration)
-4. Si `use_conveyor = true` : la cible se déplace + compensation Kalman (+150 ms)
-5. Affichage 6 figures : convergence e_t/e_r, gain adaptatif, trajectoire XY, configurations articulaires, commandes dq
+Simulation steps:
+1. Load robot parameters (from `phase1/robot_parameters.m`)
+2. Initialise PBVS controller (adaptive gain, interaction matrix)
+3. Simulation loop (FK → error → VS command → saturation → integration)
+4. If `use_conveyor = true`: target moves + Kalman compensation (+150 ms)
+5. Display 6 figures: e_t/e_r convergence, adaptive gain, XY trajectory, joint configurations, dq commands
 
-**Note sur la convention DH** : avec la table DH du SCARA (link 3 : α = 180°), la FK produit toujours R avec trace(R) = −1 quelle que soit la configuration. L'erreur de rotation est donc calculée dans un repère adapté à cette convention (voir commentaires dans le script).
+**Note on DH convention**: with the SCARA DH table (link 3: α = 180°), FK always produces R with trace(R) = −1 regardless of configuration. Rotation error is therefore computed in a frame adapted to this convention (see comments in the script).
 
-### Résultats attendus
+### Expected Results
 
-| Métrique | Valeur |
+| Metric | Value |
 |---|---|
-| Convergence position ‖e_t‖ < 2 mm | En ~30 itérations (≈ 1 s à 30 Hz) |
-| Convergence orientation ‖e_r‖ < 1° | Simultanée |
-| Compensation tapis roulant (Kalman) | Erreur résiduelle < 5 mm à v = 50 mm/s |
-| Pas de dépassement des butées articulaires | Garanti par saturation |
+| Position convergence ‖e_t‖ < 2 mm | ~30 iterations (~1 s at 30 Hz) |
+| Orientation convergence ‖e_r‖ < 1° | Simultaneous |
+| Conveyor compensation (Kalman) | Residual error < 5 mm at v = 50 mm/s |
+| Joint limits never exceeded | Guaranteed by saturation |

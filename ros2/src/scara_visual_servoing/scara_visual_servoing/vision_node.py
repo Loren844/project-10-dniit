@@ -26,9 +26,9 @@ class VisionNode(Node):
         try:
             self.plc.disconnect()
             self.plc.connect('192.168.0.10', 0, 1)
-            self.get_logger().info("CONNECTE AU PLC")
+            self.get_logger().info("CONNECTED TO PLC")
         except Exception as e:
-            self.get_logger().error(f"ERREUR CONNEXION: {e}")
+            self.get_logger().error(f"CONNECTION ERROR: {e}")
 
     def image_callback(self, msg):
         cv_image = self.br.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -61,12 +61,12 @@ class VisionNode(Node):
             
             try:
                 self.plc.db_write(1, 0, data)
-                self.get_logger().info(f"ECRITURE OK: X={world_x:.3f}, Y={world_y:.3f}")
+                self.get_logger().info(f"WRITE OK: X={world_x:.3f}, Y={world_y:.3f}")
             except Exception as e:
-                self.get_logger().error(f"ECHEC ECRITURE: {e}")
+                self.get_logger().error(f"WRITE FAILED: {e}")
                 self.connect_to_plc()
         else:
-            self.get_logger().warning("YOLO NE VOIT PAS LA CIBLE")
+            self.get_logger().warning("YOLO CANNOT SEE THE TARGET")
             
         annotated_frame = results[0].plot()
         img_msg = self.br.cv2_to_imgmsg(annotated_frame, "bgr8")

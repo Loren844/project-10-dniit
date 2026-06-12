@@ -1,33 +1,33 @@
-# Phase 4 — Simulation ROS2 SCARA + Asservissement Visuel
+# Phase 4 — ROS2 SCARA Simulation + Visual Servoing
 
-Simulation complète d'un robot SCARA 4-DOF avec pick-and-place sur tapis roulant,
-utilisant ROS2 Humble, Gazebo Ignition (Fortress) et ros2_control.
-
----
-
-## Table des matières
-
-1. [Prérequis](#prérequis)
-2. [Architecture du projet](#architecture-du-projet)
-3. [Paramètres du robot](#paramètres-du-robot)
-4. [Installation et build](#installation-et-build)
-5. [Lancement](#lancement)
-6. [Description des nœuds](#description-des-nœuds)
-7. [Scénario pick-and-place](#scénario-pick-and-place)
-8. [Topics et interfaces](#topics-et-interfaces)
-9. [Bugs corrigés](#bugs-corrigés)
-10. [Synchronisation macOS → Linux](#synchronisation-macos--linux)
+Full simulation of a 4-DOF SCARA robot with pick-and-place on a conveyor belt,
+using ROS2 Humble, Gazebo Ignition Fortress, and ros2_control.
 
 ---
 
-## Prérequis
+## Table of Contents
 
-### Système
+1. [Prerequisites](#prerequisites)
+2. [Project Architecture](#project-architecture)
+3. [Robot Parameters](#robot-parameters)
+4. [Installation and Build](#installation-and-build)
+5. [Launch](#launch)
+6. [Node Descriptions](#node-descriptions)
+7. [Pick-and-Place Scenario](#pick-and-place-scenario)
+8. [Topics and Interfaces](#topics-and-interfaces)
+9. [Fixed Bugs](#fixed-bugs)
+10. [macOS → Linux Sync](#macos--linux-sync)
+
+---
+
+## Prerequisites
+
+### System
 - Ubuntu 22.04
 - ROS2 Humble
 - Gazebo Ignition Fortress 6
 
-### Packages ROS2 requis
+### Required ROS2 packages
 
 ```bash
 sudo apt install \
@@ -40,83 +40,83 @@ sudo apt install \
   ros-humble-xacro
 ```
 
-### Python (env virtuel `env/`)
+### Python (virtual env `env/`)
 
 ```bash
-# Déjà installé dans env/ (ultralytics, opencv, numpy, matplotlib, sympy...)
+# Already installed in env/ (ultralytics, opencv, numpy, matplotlib, sympy...)
 source env/bin/activate
 ```
 
 ---
 
-## Architecture du projet
+## Project Architecture
 
 ```
 ros2/
 ├── src/
-│   ├── scara_description/          # URDF/XACRO du robot
+│   ├── scara_description/          # Robot URDF/XACRO
 │   │   └── urdf/scara_robot.urdf.xacro
-│   ├── scara_moveit_config/        # Configuration ros2_control + MoveIt2
+│   ├── scara_moveit_config/        # ros2_control + MoveIt2 configuration
 │   │   └── config/ros2_controllers.yaml
-│   └── scara_visual_servoing/      # Nœuds ROS2 principaux
+│   └── scara_visual_servoing/      # Main ROS2 nodes
 │       ├── launch/
-│       │   ├── gazebo_sim.launch.py   # Launch complet (Gazebo + VS)
-│       │   └── bringup.launch.py      # Launch sans Gazebo (debug)
+│       │   ├── gazebo_sim.launch.py   # Full launch (Gazebo + VS)
+│       │   └── bringup.launch.py      # Launch without Gazebo (debug)
 │       └── scara_visual_servoing/
-│           ├── vs_node.py             # Nœud asservissement visuel PBVS
-│           ├── sim_target_node.py     # Simulation tapis roulant
-│           ├── gazebo_bridge.py       # Initialisation pose home
-│           └── vision_node.py         # [Phase 5] Détection YOLO + écriture PLC snap7
-├── rebuild.sh                         # Script de rebuild complet
-└── README.md                          # Ce fichier
+│           ├── vs_node.py             # PBVS visual servoing node
+│           ├── sim_target_node.py     # Conveyor belt simulation
+│           ├── gazebo_bridge.py       # Home pose initialisation
+│           └── vision_node.py         # [Phase 5] YOLO detection + PLC write (snap7)
+├── rebuild.sh                         # Full rebuild script
+└── README.md                          # This file
 ```
 
 ---
 
-## Paramètres du robot
+## Robot Parameters
 
-### Paramètres DH (SCARA 4-DOF)
+### DH Parameters (4-DOF SCARA)
 
-| Paramètre | Valeur | Description |
+| Parameter | Value | Description |
 |-----------|--------|-------------|
-| a2        | 0.40 m | Longueur bras 1 |
-| a3        | 0.30 m | Longueur bras 2 |
-| d3        | 0.10 m | Offset vertical lien 3 |
-| d4        | 0.15 m | Offset effecteur |
+| a2        | 0.40 m | Link 1 length |
+| a3        | 0.30 m | Link 2 length |
+| d3        | 0.10 m | Link 3 vertical offset |
+| d4        | 0.15 m | End-effector offset |
 
-### Joints (ordre convention DH)
+### Joints (DH convention order)
 
-| Joint | Type | Limites | Init | Description |
+| Joint | Type | Limits | Init | Description |
 |-------|------|---------|------|-------------|
-| joint_1theta | Revolute (Z+) | ±135° | 0 rad | Rotation base |
-| joint_1z     | Prismatic (Z+) | 0–0.4 m | 0.35 m | Translation verticale |
-| joint3       | Revolute (Z-) | ±90° | **0.3 rad** | Rotation coude |
-| joint4       | Revolute (Z-) | ±180° | 0 rad | Rotation poignet |
+| joint_1theta | Revolute (Z+) | ±135° | 0 rad | Base rotation |
+| joint_1z     | Prismatic (Z+) | 0–0.4 m | 0.35 m | Vertical translation |
+| joint3       | Revolute (Z-) | ±90° | **0.3 rad** | Elbow rotation |
+| joint4       | Revolute (Z-) | ±180° | 0 rad | Wrist rotation |
 
-> **Note** : joint3 démarre à 0.3 rad (et non 0) pour éviter la singularité de configuration
-> qui survient quand les deux bras sont parfaitement alignés (θ3 = 0).
+> **Note**: joint3 starts at 0.3 rad (not 0) to avoid the configuration singularity
+> that occurs when both links are perfectly aligned (θ3 = 0).
 
-### Cinématique directe (FK)
+### Forward Kinematics (FK)
 
 ```
 px = a2·cos(θ1) + a3·cos(θ1 + θ3)
 py = a2·sin(θ1) + a3·sin(θ1 + θ3)
-pz = d2 - d3 - d4   (d3=0.10, d4=0.15 → offset total 0.25 m)
+pz = d2 - d3 - d4   (d3=0.10, d4=0.15 → total offset 0.25 m)
 ```
 
-Pose home [0, 0.40, 0.3, 0] → outil à z = 0.40 − 0.25 = **0.15 m**
+Home pose [0, 0.40, 0.3, 0] → tool at z = 0.40 − 0.25 = **0.15 m**
 
-### Espace de travail
+### Workspace
 
-- Rayon : r ∈ [0.10, 0.70] m
-- Hauteur outil : pz ∈ [−0.25, +0.15] m (via d2 ∈ [0, 0.4])
-- Zone de saisie tapis : **(0.55, 0.0, 0.09)** m — 6 cm de descente disponible depuis home
+- Radius: r ∈ [0.10, 0.70] m
+- Tool height: pz ∈ [−0.25, +0.15] m (via d2 ∈ [0, 0.4])
+- Conveyor pick zone: **(0.55, 0.0, 0.09)** m — 6 cm of descent available from home
 
 ---
 
-## Installation et build
+## Installation and Build
 
-### Première installation
+### First installation
 
 ```bash
 cd ~/Documents/project-10/ros2
@@ -124,7 +124,7 @@ cd ~/Documents/project-10/ros2
 # Source ROS2
 source /opt/ros/humble/setup.bash
 
-# Build les 3 packages
+# Build the 3 packages
 colcon build --packages-select \
   scara_description \
   scara_moveit_config \
@@ -134,251 +134,250 @@ colcon build --packages-select \
 source install/setup.bash
 ```
 
-### Rebuild après modification
+### Rebuild after modification
 
 ```bash
-# Rebuild complet avec nettoyage
+# Full rebuild with clean
 bash rebuild.sh
 
-# OU rebuild rapide (Python seulement, pas de changement URDF/YAML)
+# OR quick rebuild (Python only, no URDF/YAML change)
 colcon build --packages-select scara_visual_servoing --symlink-install
 source install/setup.bash
 ```
 
-### Rebuild obligatoire si modification de :
+### Rebuild required when modifying:
 - `scara_robot.urdf.xacro` → rebuild `scara_description`
 - `ros2_controllers.yaml` → rebuild `scara_moveit_config`
-- `*.py` → rebuild `scara_visual_servoing` (ou juste `touch` + relance avec symlink-install)
+- `*.py` → rebuild `scara_visual_servoing` (or just `touch` + relaunch with symlink-install)
 
 ---
 
-## Lancement
+## Launch
 
 ```bash
-# Source (obligatoire dans chaque terminal)
+# Source (required in every terminal)
 source /opt/ros/humble/setup.bash
 source ~/Documents/project-10/ros2/install/setup.bash
 
-# Simulation complète (Gazebo GUI + VS + tapis roulant)
+# Full simulation (Gazebo GUI + VS + conveyor belt)
 ros2 launch scara_visual_servoing gazebo_sim.launch.py
 
-# Sans interface graphique (CI, serveur)
+# Headless (CI, server)
 ros2 launch scara_visual_servoing gazebo_sim.launch.py headless:=true
 
-# Avec MoveIt2
+# With MoveIt2
 ros2 launch scara_visual_servoing gazebo_sim.launch.py with_moveit:=true
 ```
 
-### Séquence de démarrage (timings)
+### Startup Sequence (timings)
 
-| t (s) | Événement |
+| t (s) | Event |
 |-------|-----------|
-| 0     | Gazebo Ignition démarre |
-| 2     | Suppression des anciennes entités (si relance) |
-| 4     | Spawn du robot SCARA |
-| 5.5   | Spawn tapis roulant (vert, statique) |
-| 6.0   | Spawn zone de dépôt (bleu, statique) |
-| 6.5   | Spawn sphère objet (rouge, **dynamique**) |
-| 20    | Chargement `joint_state_broadcaster` |
-| 26    | Chargement `joint_trajectory_controller` |
-| 28    | `sim_target_node` démarre — tapis en mouvement |
+| 0     | Gazebo Ignition starts |
+| 2     | Remove old entities (if restarting) |
+| 4     | Spawn SCARA robot |
+| 5.5   | Spawn conveyor belt (green, static) |
+| 6.0   | Spawn deposit zone (blue, static) |
+| 6.5   | Spawn object sphere (red, **dynamic**) |
+| 20    | Load `joint_state_broadcaster` |
+| 26    | Load `joint_trajectory_controller` |
+| 28    | `sim_target_node` starts — conveyor moving |
 
 ---
 
-## Description des nœuds
+## Node Descriptions
 
-### `vs_node.py` — Asservissement Visuel PBVS
+### `vs_node.py` — PBVS Visual Servoing
 
-Nœud principal de contrôle. Implémente une boucle d'asservissement visuel
-de type PBVS (Position-Based Visual Servoing) avec :
+Main control node. Implements a PBVS (Position-Based Visual Servoing) loop with:
 
-- **Contrôleur** : `VSController` (DLS — Damped Least Squares)
-- **Fréquence** : 30 Hz (dt = 0.033 s)
-- **Gain** : 1.2 (gain fixe, `adaptive=True` via paramètre ROS2)
-- **Sécurité** : saturation vitesse (dq_max = [2.0, 0.2, 2.0, 2.0] rad/s ou m/s)
-- **Publication TCP** : `/vs/tcp_pose` (PoseStamped, 30 Hz) — utilisé par sim_target_node
+- **Controller**: `VSController` (DLS — Damped Least Squares)
+- **Frequency**: 30 Hz (dt = 0.033 s)
+- **Gain**: 1.2 (fixed gain, `adaptive=True` via ROS2 parameter)
+- **Safety**: velocity saturation (dq_max = [2.0, 0.2, 2.0, 2.0] rad/s or m/s)
+- **TCP publication**: `/vs/tcp_pose` (PoseStamped, 30 Hz) — used by sim_target_node
 
-**Machine à états pick-and-place** :
+**Pick-and-place state machine**:
 
 ```
 TRACKING ──(|et|<2mm)──► WAIT_PICK ──(1s)──► CARRYING ──(|et|<2mm)──► WAIT_DEP ──(1.5s)──► TRACKING
 ```
 
-- `TRACKING` : robot suit la cible tapis (publiée par sim_target_node)
-- `WAIT_PICK` : maintien 1 s, publie `status=PICKED`
-- `CARRYING` : robot se dirige vers le dépôt `(0.0, −0.55, 0.09)`
-- `WAIT_DEP` : pause 1.5 s, publie `status=DEPOSITED`
+- `TRACKING`: robot follows conveyor target (published by sim_target_node)
+- `WAIT_PICK`: hold 1 s, publish `status=PICKED`
+- `CARRYING`: robot moves to deposit `(0.0, −0.55, 0.09)`
+- `WAIT_DEP`: pause 1.5 s, publish `status=DEPOSITED`
 
-**Publication trajectoires** :
-- `header.stamp = Time(sec=0)` → JTC interprète "démarrer à la réception"
-- `time_from_start = max(dt×1.2, 40ms)` → fenêtre d'exécution serrée
+**Trajectory publication**:
+- `header.stamp = Time(sec=0)` → JTC interprets as "start at reception"
+- `time_from_start = max(dt×1.2, 40ms)` → tight execution window
 
-### `sim_target_node.py` — Simulation tapis roulant
+### `sim_target_node.py` — Conveyor Belt Simulation
 
-Simule un objet (sphère rouge) se déplaçant sur un tapis roulant et synchronise
-sa position dans Gazebo avec l'état logique du scénario.
+Simulates an object (red sphere) moving along a conveyor belt and synchronises
+its position in Gazebo with the logical scenario state.
 
-| Paramètre | Valeur |
+| Parameter | Value |
 |-----------|--------|
-| Position X tapis | 0.55 m (face au robot, bras tendu) |
-| Y entrée objet | −0.45 m |
-| Y sortie objet | +0.45 m |
-| Y zone de saisie | 0.0 m |
-| Z centre sphère | 0.09 m (top tapis 0.05 + rayon 0.04) |
-| Vitesse tapis | 0.04 m/s |
-| Pause zone saisie | jusqu'à 60 s |
-| Point de dépôt | (0.0, −0.55, 0.09) m |
+| Conveyor X position | 0.55 m (facing robot, arm extended) |
+| Object entry Y | −0.45 m |
+| Object exit Y | +0.45 m |
+| Pick zone Y | 0.0 m |
+| Sphere centre Z | 0.09 m (belt top 0.05 + radius 0.04) |
+| Belt speed | 0.04 m/s |
+| Pick zone pause | up to 60 s |
+| Deposit point | (0.0, −0.55, 0.09) m |
 
-**Déplacement sphère Gazebo** — deux approches par ordre de priorité :
-1. **`ignition.transport` Python** (bindings in-process, même partition transport que Gazebo — fiable)
-2. **Subprocess `ign service`** (fallback, timeout 2000 ms)
+**Gazebo sphere movement** — two approaches in priority order:
+1. **Python `ignition.transport` bindings** (in-process, same transport partition as Gazebo — reliable)
+2. **Subprocess `ign service`** (fallback, 2000 ms timeout)
 
-### `vision_node.py` — Détection YOLO + Interface PLC (Phase 5)
+### `vision_node.py` — YOLO Detection + PLC Interface (Phase 5)
 
-Nœud de vision pour le robot **réel**. S'abonne au flux caméra ROS2, détecte les objets
-cibles avec YOLOv8, calcule leurs coordonnées dans le repère monde et envoie le résultat
-directement à un **automate Siemens** (API S7) via le protocole **snap7**.
+Vision node for the **real robot**. Subscribes to the ROS2 camera feed, detects
+target objects with YOLOv8, computes their world-frame coordinates, and writes
+the result directly to a **Siemens PLC** (S7 API) via the **snap7** protocol.
 
-- **Abonnement** : `/camera/image_raw` (Image)
-- **Publication** : `/yolo/detections` (Image annotée, 30 Hz)
-- **Modèle YOLO** : `yolov8n.pt` (classes COCO utilisées : 32=ball, 47=cup, 49=orange)
-- **Calcul de position monde** :
+- **Subscription**: `/camera/image_raw` (Image)
+- **Publication**: `/yolo/detections` (annotated Image, 30 Hz)
+- **YOLO model**: `yolov8n.pt` (COCO classes used: 32=ball, 47=cup, 49=orange)
+- **World position computation**:
 
   ```
   x_cam = (cx_px − 320) × z_dist / f        (f = 554.25 px, z_dist = 0.75 m)
   y_cam = (cy_px − 240) × z_dist / f
   world_x = cam_x − y_cam                   (cam_x = 0.55 m)
   world_y = cam_y − x_cam                   (cam_y = 0.0 m)
-  world_z = 0.05 m                           (hauteur tapis fixe)
+  world_z = 0.05 m                           (fixed belt height)
   ```
 
-- **Écriture PLC** : 3 floats big-endian (12 octets) → **DB1, offset 0** (X, Y, Z) via `snap7.client.Client`
-- **Reconnexion automatique** : en cas d'échec d'écriture, tentative de reconnexion immédiate
+- **PLC write**: 3 big-endian floats (12 bytes) → **DB1, offset 0** (X, Y, Z) via `snap7.client.Client`
+- **Auto-reconnect**: on write failure, immediate reconnection attempt
 
-**Prérequis supplémentaires (robot réel)** :
+**Additional requirements (real robot)**:
 
 ```bash
-pip install python-snap7       # bindings snap7
-# snap7 doit être compilé sur le système (libsnap7.so)
-# PLC Siemens accessible à l'adresse 192.168.0.10 (rack=0, slot=1)
+pip install python-snap7       # snap7 bindings
+# snap7 must be compiled on the system (libsnap7.so)
+# Siemens PLC reachable at 192.168.0.10 (rack=0, slot=1)
 ```
 
-> **Note** : ce nœud est conçu pour le robot physique et ne fonctionne pas en simulation
-> pure (pas de Gazebo, pas de `/vs/target_pose`). Il remplace la logique de
-> `sim_target_node.py` pour fournir la position cible depuis la vision réelle.
+> **Note**: this node is designed for the physical robot and does not work in
+> pure simulation (no Gazebo, no `/vs/target_pose`). It replaces the logic of
+> `sim_target_node.py` to provide the target position from real vision.
 
 ### `gazebo_bridge.py` — Initialisation
 
-Envoie la pose home [0, 0.35, 0.3, 0] au JTC au démarrage.
+Sends the home pose [0, 0.35, 0.3, 0] to the JTC at startup.
 
 ---
 
-## Scénario pick-and-place
+## Pick-and-Place Scenario
 
 ```
-1. L'objet (sphère rouge, r=4 cm) entre sur le tapis depuis y=−0.45 m
-2. L'objet se déplace en +Y à 0.04 m/s (le long du tapis x=0.55 m)
-3. Quand y ≈ 0.0 m (zone de saisie) → tapis s'arrête 3 s
-4. sim_target_node publie la cible (0.55, 0.0, 0.09) sur /vs/target_pose
-5. vs_node converge vers la cible : |et| < 2 mm (descente de 6 cm depuis home z=0.15)
-6. Maintien 1 s → statut "PICKED" publié → sphère suit le TCP du bras
-7. vs_node se dirige vers le dépôt (0.0, −0.55, 0.09) avec status=CARRYING
-8. À convergence : maintien 1.5 s → statut "DEPOSITED" publié
-9. Nouvel objet sur le tapis depuis y=−0.45 → cycle recommence
+1. Object (red sphere, r=4 cm) enters the belt from y=−0.45 m
+2. Object moves in +Y at 0.04 m/s (along belt x=0.55 m)
+3. When y ≈ 0.0 m (pick zone) → belt stops for 3 s
+4. sim_target_node publishes target (0.55, 0.0, 0.09) on /vs/target_pose
+5. vs_node converges to target: |et| < 2 mm (6 cm descent from home z=0.15)
+6. Hold 1 s → status "PICKED" published → sphere follows arm TCP
+7. vs_node moves to deposit (0.0, −0.55, 0.09) with status=CARRYING
+8. On convergence: hold 1.5 s → status "DEPOSITED" published
+9. New object on belt from y=−0.45 → cycle repeats
 ```
 
 ---
 
-## Topics et interfaces
+## Topics and Interfaces
 
-### Topics publiés
+### Published Topics
 
-| Topic | Type | Nœud | Description |
+| Topic | Type | Node | Description |
 |-------|------|------|-------------|
-| `/joint_trajectory_controller/joint_trajectory` | `JointTrajectory` | vs_node | Commandes articulaires |
+| `/joint_trajectory_controller/joint_trajectory` | `JointTrajectory` | vs_node | Joint commands |
 | `/vs/status` | `String` | vs_node | TRACKING / PICKED / DEPOSITED / SINGULAR |
-| `/vs/error` | `Vector3` | vs_node | Norme erreur (mm, deg, 0) |
-| `/vs/target_pose` | `PoseStamped` | sim_target_node | Position cible pick |
-| `/vs/deposit_pose` | `PoseStamped` | sim_target_node | Position dépôt |
-| `/vs/target_marker` | `Marker` | sim_target_node | Visualisation RViz (sphère) |
+| `/vs/error` | `Vector3` | vs_node | Error norm (mm, deg, 0) |
+| `/vs/target_pose` | `PoseStamped` | sim_target_node | Pick target position |
+| `/vs/deposit_pose` | `PoseStamped` | sim_target_node | Deposit position |
+| `/vs/target_marker` | `Marker` | sim_target_node | RViz visualisation (sphere) |
 
-### Topics abonnés
+### Subscribed Topics
 
-| Topic | Type | Nœud | QoS |
+| Topic | Type | Node | QoS |
 |-------|------|------|-----|
-| `/joint_states` | `JointState` | vs_node | **BEST_EFFORT** (obligatoire) |
+| `/joint_states` | `JointState` | vs_node | **BEST_EFFORT** (required) |
 | `/vs/tcp_pose` | `PoseStamped` | sim_target_node | RELIABLE |
 | `/vs/status` | `String` | sim_target_node | RELIABLE |
 
-> **Important** : `joint_state_broadcaster` publie en BEST_EFFORT.
-> S'abonner en RELIABLE → aucun message reçu.
+> **Important**: `joint_state_broadcaster` publishes with BEST_EFFORT.
+> Subscribing with RELIABLE → no messages received.
 
 ---
 
-## Bugs corrigés
+## Fixed Bugs
 
-### 1. Robot invisible dans Gazebo
-**Cause** : Spawn trop tôt, Gazebo pas encore prêt.  
-**Fix** : `TimerAction(period=4.0)` avant le spawn.
+### 1. Robot invisible in Gazebo
+**Cause**: Spawn too early, Gazebo not yet ready.
+**Fix**: `TimerAction(period=4.0)` before spawn.
 
-### 2. Pas de `/joint_states` reçu
-**Cause** : QoS mismatch — vs_node s'abonnait en RELIABLE, JSB publie en BEST_EFFORT.  
-**Fix** : `QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT)`.
+### 2. No `/joint_states` received
+**Cause**: QoS mismatch — vs_node subscribed RELIABLE, JSB publishes BEST_EFFORT.
+**Fix**: `QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT)`.
 
-### 3. Singularité permanente (robot ne bouge pas)
-**Cause** : joint3 initial = 0 rad → bras alignés → Jacobien de rang insuffisant.  
-**Fix** : `initial_value = 0.3 rad` dans le URDF + `self.q = [0, 0.40, 0.3, 0]` dans vs_node.
+### 3. Permanent singularity (robot does not move)
+**Cause**: joint3 initial = 0 rad → aligned links → insufficient Jacobian rank.
+**Fix**: `initial_value = 0.3 rad` in URDF + `self.q = [0, 0.40, 0.3, 0]` in vs_node.
 
-### 4. Trajectoires rejetées "ends in the past"
-**Cause** : `header.stamp = now()` + `time_from_start = 50ms` → trajectoire expirée à la réception.  
-**Fix** : `header.stamp = Time(sec=0, nanosec=0)` → JTC interprète "démarrer à la réception" + `time_from_start = 40ms`.
+### 4. Trajectories rejected "ends in the past"
+**Cause**: `header.stamp = now()` + `time_from_start = 50ms` → trajectory expired on receipt.
+**Fix**: `header.stamp = Time(sec=0, nanosec=0)` → JTC interprets "start at reception" + `time_from_start = 40ms`.
 
-### 5. JTC "Failed to activate" (timeout spawner)
-**Cause** : Spawner trop court pour la confirmation `switch_controller`.  
-**Fix** : `--controller-manager-timeout 30` + `open_loop_control: true`.
+### 5. JTC "Failed to activate" (spawner timeout)
+**Cause**: Spawner too short for `switch_controller` confirmation.
+**Fix**: `--controller-manager-timeout 30` + `open_loop_control: true`.
 
-### 6. Objet bloqué dans la zone de saisie (timeout)
-**Cause** : Après timeout, l'objet entrait immédiatement de nouveau dans la zone.  
-**Fix** : Timeout 60 s + saut `PICK_ZONE_Y + 0.10` après timeout.
+### 6. Object stuck in pick zone (timeout)
+**Cause**: After timeout, object immediately re-entered the zone.
+**Fix**: 60 s timeout + skip to `PICK_ZONE_Y + 0.10` after timeout.
 
-### 7. Paramètres numériques traités comme string
-**Cause** : `DeclareLaunchArgument` sans `value_type=float`.  
-**Fix** : `value_type=float` pour gain, target_x/y/z.
+### 7. Numeric parameters treated as strings
+**Cause**: `DeclareLaunchArgument` without `value_type=float`.
+**Fix**: `value_type=float` for gain, target_x/y/z.
 
-### 8. Mauvais noms de joints
-**Cause** : Héritage Phase 3.  
-**Fix** : `JOINT_NAMES = ['joint_1theta', 'joint_1z', 'joint3', 'joint4']`.
+### 8. Wrong joint names
+**Cause**: Inherited from Phase 3.
+**Fix**: `JOINT_NAMES = ['joint_1theta', 'joint_1z', 'joint3', 'joint4']`.
 
-### 9. Sphère spawne à (0, 0, 0) au lieu de la position voulue
-**Cause** : En Ignition Fortress, `ros_gz_sim create` peut ignorer le tag `<pose>` interne au SDF.  
-**Fix** : Toujours passer `-x -y -z` comme arguments CLI de `create` (prioritaires sur le SDF).
+### 9. Sphere spawns at (0, 0, 0) instead of desired position
+**Cause**: In Ignition Fortress, `ros_gz_sim create` may ignore the `<pose>` tag inside the SDF.
+**Fix**: Always pass `-x -y -z` as CLI arguments to `create` (take priority over SDF).
 
-### 10. Sphère statique / kinematic ignorée par `set_pose`
-**Cause** : En Ignition Fortress + DART, `set_pose` sur les corps `static=true` ou `kinematic=true` est silencieusement ignoré.  
-**Fix** : Corps **dynamique** (ni static, ni kinematic) + `<collision>` → la sphère repose sur le tapis par contact physique et répond à `set_pose`.
+### 10. Static / kinematic sphere ignored by `set_pose`
+**Cause**: In Ignition Fortress + DART, `set_pose` on `static=true` or `kinematic=true` bodies is silently ignored.
+**Fix**: **Dynamic** body (neither static nor kinematic) + `<collision>` → sphere rests on belt through contact physics and responds to `set_pose`.
 
-### 11. `<gravity>false</gravity>` ignoré par DART
-**Cause** : Le moteur physique DART (défaut Ignition Fortress) ne supporte pas la désactivation de gravité par lien. La balise est ignorée → la sphère tombait à travers le sol.  
-**Fix** : Corps dynamique avec collision (sphère r=0.04 m, tapis statique avec collision) — la physique de contact maintient la sphère sur le tapis.
+### 11. `<gravity>false</gravity>` ignored by DART
+**Cause**: DART physics engine (Ignition Fortress default) does not support per-link gravity disable. Tag is ignored → sphere fell through the floor.
+**Fix**: Dynamic body with collision (sphere r=0.04 m, static belt with collision) — contact physics keeps the sphere on the belt.
 
-### 12. `set_pose` subprocess timeout systématique
-**Cause** : `ign service` lancé en subprocess ne peut pas atteindre le réseau de transport Ignition de Gazebo (isolation de découverte multicast dans le container Docker).  
-**Fix** : Utiliser les **bindings Python `ignition.transport`** directement dans le processus `sim_target_node` — même partition transport que Gazebo → communication garantie. Subprocess conservé en fallback avec timeout 2000 ms.
+### 12. `set_pose` subprocess timeout
+**Cause**: `ign service` launched as subprocess cannot reach the Ignition transport network of Gazebo (multicast discovery isolation in Docker container).
+**Fix**: Use Python **`ignition.transport` bindings** directly inside the `sim_target_node` process — same transport partition as Gazebo → guaranteed communication. Subprocess kept as fallback with 2000 ms timeout.
 
-### 13. Robot qui se réinitialise en boucle (cible changeante)
-**Cause** : Chaque publication sur `/vs/target_pose` réinitialisait le flag `_converged`, même si la cible ne bougeait que de quelques mm (bruit de publication).  
-**Fix** : `_cb_target_pose` ne réinitialise `_converged` que si la cible saute de plus de 50 mm.
+### 13. Robot resetting in loop (changing target)
+**Cause**: Every `/vs/target_pose` publication reset the `_converged` flag, even when the target only moved a few mm (publication noise).
+**Fix**: `_cb_target_pose` only resets `_converged` if the target jumps by more than 50 mm.
 
 ---
 
-## Synchronisation macOS → Linux
+## macOS → Linux Sync
 
-Les fichiers sont développés sur macOS (`/Users/lorenzo/test/ros2/`) et synchronisés manuellement vers Linux (`~/Documents/project-10/ros2/`).
+Files are developed on macOS (`/Users/lorenzo/test/ros2/`) and manually synced to Linux (`~/Documents/project-10/ros2/`).
 
-### Fichiers à synchroniser après chaque modification
+### Files to sync after each modification
 
 ```bash
-# Depuis macOS vers Linux (exemple avec scp)
+# From macOS to Linux (example with scp)
 scp src/scara_description/urdf/scara_robot.urdf.xacro        linux:~/Documents/project-10/ros2/src/scara_description/urdf/
 scp src/scara_moveit_config/config/ros2_controllers.yaml      linux:~/Documents/project-10/ros2/src/scara_moveit_config/config/
 scp src/scara_visual_servoing/scara_visual_servoing/vs_node.py linux:~/Documents/project-10/ros2/src/scara_visual_servoing/scara_visual_servoing/
@@ -386,12 +385,12 @@ scp src/scara_visual_servoing/scara_visual_servoing/sim_target_node.py linux:~/D
 scp src/scara_visual_servoing/launch/gazebo_sim.launch.py     linux:~/Documents/project-10/ros2/src/scara_visual_servoing/launch/
 ```
 
-### Après synchronisation
+### After sync
 
 ```bash
 cd ~/Documents/project-10/ros2
 
-# Forcer la détection des fichiers modifiés
+# Force detection of modified files
 find src/scara_description src/scara_moveit_config src/scara_visual_servoing -exec touch {} +
 
 # Rebuild
@@ -400,43 +399,43 @@ colcon build --packages-select scara_description scara_moveit_config scara_visua
 source install/setup.bash
 ```
 
-### Vérifications rapides sur Linux
+### Quick checks on Linux
 
 ```bash
-# joint3 initial = 0.3 (anti-singularité)
+# joint3 initial = 0.3 (anti-singularity)
 grep -A10 'name="joint3"' src/scara_description/urdf/scara_robot.urdf.xacro | grep initial_value
-# Attendu : <param name="initial_value">0.3</param>
+# Expected: <param name="initial_value">0.3</param>
 
-# Trajectoires avec stamp=0
+# Trajectories with stamp=0
 grep "Time(sec=0" src/scara_visual_servoing/scara_visual_servoing/vs_node.py
-# Attendu : msg.header.stamp = Time(sec=0, nanosec=0)
+# Expected: msg.header.stamp = Time(sec=0, nanosec=0)
 
 # JTC open loop
 grep "open_loop" src/scara_moveit_config/config/ros2_controllers.yaml
-# Attendu : open_loop_control: true
+# Expected: open_loop_control: true
 ```
 
 ---
 
-## Commandes utiles en cours d'exécution
+## Useful Commands During Execution
 
 ```bash
-# Voir les joints en temps réel
+# Watch joints in real time
 ros2 topic echo /joint_states
 
-# Voir le statut VS
+# Watch VS status
 ros2 topic echo /vs/status
 
-# Voir l'erreur de convergence (en mm et degrés)
+# Watch convergence error (mm and degrees)
 ros2 topic echo /vs/error
 
-# Voir les trajectoires envoyées
+# Watch sent trajectories
 ros2 topic echo /joint_trajectory_controller/joint_trajectory
 
-# État des contrôleurs
+# Controller status
 ros2 control list_controllers
 
-# Envoyer manuellement une trajectoire de test (home)
+# Manually send a test trajectory (home)
 ros2 topic pub --once /joint_trajectory_controller/joint_trajectory \
   trajectory_msgs/msg/JointTrajectory \
   '{joint_names: [joint_1theta, joint_1z, joint3, joint4],

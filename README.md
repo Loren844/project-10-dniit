@@ -1,30 +1,30 @@
 # Vision-Based Control for Autonomous Robotic Systems
-**Stage M1 — DNIIT / DUT Đà Nẵng**
-Superviseur : Dr. Vo Nhu Thanh
+**M1 Internship — DNIIT / DUT Da Nang**
+Supervisor: Dr. Vo Nhu Thanh
 
 ---
 
-## Contexte
+## Context
 
-Ce projet de stage porte sur le développement d'un système d'**asservissement visuel** (*visual servoing*) pour guider un robot **SCARA 4-DOF** afin de saisir des objets en mouvement (application *pick-and-place* dynamique sur tapis roulant).
+This internship project focuses on developing a **visual servoing** system to guide a **4-DOF SCARA** robot in grasping moving objects (dynamic *pick-and-place* application on a conveyor belt).
 
-Le robot cible est un **SCARA** (*Selective Compliance Assembly Robot Arm*) à 3 liaisons rotoïdes + 1 liaison prismatique, monté au-dessus d'un tapis roulant. La caméra est positionnée au-dessus de la scène pour détecter les objets.
+The target robot is a **SCARA** (*Selective Compliance Assembly Robot Arm*) with 3 revolute joints + 1 prismatic joint, mounted above a conveyor belt. The camera is positioned above the scene to detect objects.
 
 ---
 
-## Structure du projet
+## Project Structure
 
 ```
 .
 ├── README.md
-├── plan_stage.md              ← Plan détaillé des 5 phases du projet
-├── docs/                      ← Documentation de référence (PDFs)
-│   ├── offre-stage.pdf        ← Sujet de stage officiel
-│   ├── Mobile_Manipulator.pdf ← Rapport technique du robot (4-DOF, vision stéréo)
-│   ├── PBL6_2.pdf             ← Rapport Delta robot (tri, référence cinématique)
-│   └── 1 - Thuyetminh_...pdf ← Rapport SCARA + YOLO (référence vision)
+├── plan_stage.md              ← Detailed plan for the 5 project phases
+├── docs/                      ← Reference documentation (PDFs)
+│   ├── offre-stage.pdf        ← Official internship subject
+│   ├── Mobile_Manipulator.pdf ← Robot technical report (4-DOF, stereo vision)
+│   ├── PBL6_2.pdf             ← Delta robot report (sorting, kinematics reference)
+│   └── 1 - Thuyetminh_...pdf ← SCARA + YOLO report (vision reference)
 ├── matlab/
-│   ├── phase1/                ← Phase 1 : Simulation MATLAB
+│   ├── phase1/                ← Phase 1: MATLAB Simulation
 │   │   ├── main_phase1.m
 │   │   ├── robot_parameters.m
 │   │   ├── forward_kinematics.m
@@ -35,10 +35,10 @@ Le robot cible est un **SCARA** (*Selective Compliance Assembly Robot Arm*) à 3
 │   │   ├── plot_trajectory.m
 │   │   ├── pid_simulation.m
 │   │   └── animate_robot.m
-│   └── phase3/                ← Phase 3 : Simulation boucle fermée MATLAB
+│   └── phase3/                ← Phase 3: MATLAB Closed-loop Simulation
 │       └── main_phase3.m
 ├── python/
-│   ├── phase2/                ← Phase 2 : Reconnaissance d'objets et estimation de pose
+│   ├── phase2/                ← Phase 2: Object recognition and pose estimation
 │   │   ├── main_phase2.py
 │   │   ├── camera_calibration.py
 │   │   ├── detect_objects.py
@@ -48,94 +48,94 @@ Le robot cible est un **SCARA** (*Selective Compliance Assembly Robot Arm*) à 3
 │   │   ├── realsense_capture.py
 │   │   ├── generate_markers.py
 │   │   └── requirements.txt
-│   └── phase3/                ← Phase 3 : Contrôleur d'asservissement visuel
-│       ├── main_phase3.py         ← Pipeline principal (machine à états, CLI)
-│       ├── vs_controller.py       ← Contrôleur PBVS + cinématique SCARA
-│       ├── visual_error.py        ← Calcul erreur visuelle et matrice d'interaction
-│       ├── gripper_controller.py  ← Séquenceur pick-and-place (9 états)
-│       └── simulation_gui.py      ← Simulation 2D interactive (matplotlib)
+│   └── phase3/                ← Phase 3: Visual servoing controller
+│       ├── main_phase3.py         ← Main pipeline (state machine, CLI)
+│       ├── vs_controller.py       ← PBVS controller + SCARA kinematics
+│       ├── visual_error.py        ← Visual error and interaction matrix
+│       ├── gripper_controller.py  ← Pick-and-place sequencer (9 states)
+│       └── simulation_gui.py      ← Interactive 2D simulation (matplotlib)
 └── ros2/
     └── src/
         └── scara_visual_servoing/
             └── scara_visual_servoing/
-                ├── vs_node.py             ← Phase 4 : Asservissement visuel ROS2 (PBVS)
-                ├── sim_target_node.py     ← Phase 4 : Simulation tapis roulant Gazebo
-                ├── gazebo_bridge.py       ← Phase 4 : Initialisation pose home
-                └── vision_node.py         ← Phase 5 : Détection YOLO + écriture PLC (snap7)
+                ├── vs_node.py             ← Phase 4: ROS2 visual servoing (PBVS)
+                ├── sim_target_node.py     ← Phase 4: Gazebo conveyor belt simulation
+                ├── gazebo_bridge.py       ← Phase 4: Home pose initialisation
+                └── vision_node.py         ← Phase 5: YOLO detection + PLC write (snap7)
 ```
 
 ---
 
-## Plan du projet
+## Project Plan
 
-Le projet est découpé en **5 phases** séquentielles. Voir [plan_stage.md](plan_stage.md) pour le détail complet.
+The project is divided into **5 sequential phases**. See [plan_stage.md](plan_stage.md) for full details.
 
-| Phase | Thème | Statut |
+| Phase | Theme | Status |
 |-------|-------|--------|
-| **1** | Simulation MATLAB (modèle, cinématique, commande) | ✅ Complété |
-| **2** | Reconnaissance d'objets et estimation de pose (Python, OpenCV) | ✅ Complété |
-| **3** | Asservissement visuel PBVS (Python + MATLAB) | ✅ Complété |
-| **4** | Intégration ROS2 + Gazebo Ignition Fortress — simulation pick-and-place | ✅ Complété |
-| **5** | Tests expérimentaux sur robot réel (vision YOLO + PLC Siemens) | 🚧 En cours |
+| **1** | MATLAB Simulation (model, kinematics, control) | ✅ Completed |
+| **2** | Object recognition and pose estimation (Python, OpenCV) | ✅ Completed |
+| **3** | PBVS visual servoing (Python + MATLAB) | ✅ Completed |
+| **4** | ROS2 + Gazebo Ignition Fortress integration — pick-and-place simulation | ✅ Completed |
+| **5** | Experimental tests on real robot (YOLO vision + Siemens PLC) | 🚧 In progress |
 
 ---
 
-## Phase 1 — Simulation MATLAB
+## Phase 1 — MATLAB Simulation
 
-### Prérequis
+### Prerequisites
 
-- MATLAB R2021b ou supérieur (aucune toolbox requise — tout est implémenté from scratch)
+- MATLAB R2021b or later (no toolbox required — everything implemented from scratch)
 
-### Lancer la simulation
+### Run the simulation
 
 ```matlab
 cd matlab/phase1
-clear                % vider le cache des fonctions MATLAB
-main_phase1          % exécution complète avec figures + animation
-main_phase1(false)   % console seulement, sans figures
+clear                % clear MATLAB function cache
+main_phase1          % full run with figures + animation
+main_phase1(false)   % console only, no figures
 ```
 
-### Ce que fait `main_phase1`
+### What `main_phase1` does
 
-Le script exécute 7 étapes dans l'ordre et affiche un rapport console à chaque étape.
+The script runs 7 steps in sequence and prints a console report at each step.
 
 ---
 
-### Description des fichiers
+### File Descriptions
 
 #### `robot_parameters.m`
 
-Définit le modèle complet du robot SCARA sous forme d'une structure MATLAB `robot`.
+Defines the complete SCARA robot model as a MATLAB `robot` struct.
 
-Topologie : **θ1 (R) → d2 (P) → θ3 (R) → θ4 (R)**
+Topology: **θ1 (R) → d2 (P) → θ3 (R) → θ4 (R)**
 
-Table DH issue du rapport PBL6 (Table 2) :
+DH table from the PBL6 report (Table 2):
 
-| Lien | θ | a (m) | α (°) | d (m) |
+| Link | θ | a (m) | α (°) | d (m) |
 |------|---|-------|-------|-------|
 | 1 | θ1 var | 0 | 0° | 0 |
-| 2 | 0° fixe | **0.300** | 0° | d2 var |
+| 2 | 0° fixed | **0.300** | 0° | d2 var |
 | 3 | θ3 var | **0.160** | 180° | −0.150 |
 | 4 | θ4 var | 0 | 0° | 0.059 |
 
-Dimensions physiques (Table 1 du rapport) :
-- Bras supérieur a2 = 300 mm, avant-bras a3 = 160 mm
-- Course verticale d3 = 150 mm, offset pince d4 = 59 mm
-- Portée max XY : 460 mm, zone morte : r > 340 mm
+Physical dimensions (Table 1 of the report):
+- Upper arm a2 = 300 mm, forearm a3 = 160 mm
+- Vertical stroke d3 = 150 mm, gripper offset d4 = 59 mm
+- Max XY reach: 460 mm, dead zone: r > 340 mm
 
-Contient aussi : butées `[θ1∈±135°, d2∈[0,200mm], θ3∈±90°, θ4∈±180°]`, gains PID, paramètres dynamiques par axe.
+Also contains: joint limits `[θ1∈±135°, d2∈[0,200mm], θ3∈±90°, θ4∈±180°]`, PID gains, per-axis dynamic parameters.
 
 ---
 
 #### `forward_kinematics.m`
 
-**Problème :** étant donné `q = [θ1, d2, θ3, θ4]`, où est l'effecteur ?
+**Problem:** given `q = [θ1, d2, θ3, θ4]`, where is the end-effector?
 
-**Méthode :** composition des 4 matrices DH spécifiques au SCARA :
+**Method:** composition of the 4 SCARA-specific DH matrices:
 
 $$T_{0 \to 4} = A_1(\theta_1) \cdot A_2(d_2) \cdot A_3(\theta_3) \cdot A_4(\theta_4)$$
 
-Position de l'effecteur (formules analytiques issues de la FK du rapport) :
+End-effector position (analytical formulas from the report FK):
 
 $$P_x = a_2 \cos\theta_1 + a_3 \cos(\theta_1 + \theta_3)$$
 $$P_y = a_2 \sin\theta_1 + a_3 \sin(\theta_1 + \theta_3)$$
@@ -149,19 +149,19 @@ $$P_z = d_2 - d_3 - d_4$$
 
 #### `inverse_kinematics.m`
 
-**Problème :** étant donné une pose cible `(Px, Py, Pz)`, quelles commandes envoyer ?
+**Problem:** given a target pose `(Px, Py, Pz)`, what commands to send?
 
-**Méthode :** IK **analytique** — formules fermées issues du rapport PBL6 (éq. [1.8]–[1.11]) :
+**Method:** **Analytical** IK — closed-form from PBL6 report (eq. [1.8]–[1.11]):
 
-1. $\cos\theta_3 = \dfrac{P_x^2 + P_y^2 - a_2^2 - a_3^2}{2 a_2 a_3}$ → 2 solutions (coude haut/bas)
+1. $\cos\theta_3 = \dfrac{P_x^2 + P_y^2 - a_2^2 - a_3^2}{2 a_2 a_3}$ → 2 solutions (elbow up/down)
 
 2. $\theta_1 = \text{atan2}\!\left(\dfrac{P_y k_1 - P_x k_2}{D},\ \dfrac{P_x k_1 + P_y k_2}{D}\right)$
 
-3. $\theta_4 = -\theta_1 - \theta_3$ (orientation maintenue à 0°)
+3. $\theta_4 = -\theta_1 - \theta_3$ (orientation held at 0°)
 
 4. $d_2 = P_z + d_3 + d_4$
 
-Avantage par rapport à une méthode numérique : **solution exacte en un calcul**, pas d'itération, erreur résiduelle = 0.0000 mm.
+Advantage over numerical methods: **exact solution in one computation**, no iteration, residual error = 0.0000 mm.
 
 ```matlab
 [q_sol, success, err] = inverse_kinematics(robot, T_des, q0)
@@ -171,36 +171,36 @@ Avantage par rapport à une méthode numérique : **solution exacte en un calcul
 
 #### `workspace_analysis.m`
 
-Visualise l'**espace de travail** du SCARA (enveloppe de tous les points atteignables par l'effecteur).
+Visualises the SCARA **workspace** (envelope of all positions reachable by the end-effector).
 
-**Méthode :** Monte Carlo — 30 000 configurations aléatoires dans `[q_min, q_max]`, cinématique directe pour chacune.
+**Method:** Monte Carlo — 30 000 random configurations in `[q_min, q_max]`, forward kinematics for each.
 
-Résultats attendus (cohérents avec Figure 11-12 du rapport PBL6) :
-- XY : anneau toroïdal entre r = 340 mm et r = 460 mm (zone morte car θ3 ∈ ±90°)
-- Z : plan de travail horizontal à hauteur variable entre −209 mm et −9 mm
+Expected results (consistent with Figures 11–12 of the PBL6 report):
+- XY: toroidal ring between r = 340 mm and r = 460 mm (dead zone because θ3 ∈ ±90°)
+- Z: horizontal working plane at variable height between −209 mm and −9 mm
 
-Génère 4 figures : vue 3D, projection XY, projection XZ, structure du bras SCARA (bras horizontaux, colonne verticale).
+Generates 4 figures: 3D view, XY projection, XZ projection, SCARA arm structure.
 
 ```matlab
 workspace_analysis(robot)
-workspace_analysis(robot, 50000)  % plus d'échantillons
+workspace_analysis(robot, 50000)  % more samples
 ```
 
 ---
 
 #### `joint_space_trajectory.m`
 
-Génère une trajectoire **point-à-point dans l'espace articulaire** de `q_start` à `q_end`.
+Generates a **point-to-point joint-space trajectory** from `q_start` to `q_end`.
 
-3 profils disponibles :
+3 available profiles:
 
-| Profil | Continuité | Particularité |
+| Profile | Continuity | Notes |
 |--------|-----------|--------------|
-| `cubic` | C¹ (vitesse) | Standard, simple |
-| `quintic` | C² (accélération) | Mouvement le plus doux |
-| `trapezoidal` | C⁰ | Proche des variateurs industriels |
+| `cubic` | C¹ (velocity) | Standard, simple |
+| `quintic` | C² (acceleration) | Smoothest motion |
+| `trapezoidal` | C⁰ | Close to industrial drives |
 
-Retourne `traj.q`, `traj.dq`, `traj.ddq` (positions, vitesses, accélérations).
+Returns `traj.q`, `traj.dq`, `traj.ddq` (positions, velocities, accelerations).
 
 ```matlab
 traj = joint_space_trajectory(q_start, q_end, T_total, dt, 'quintic')
@@ -210,11 +210,11 @@ traj = joint_space_trajectory(q_start, q_end, T_total, dt, 'quintic')
 
 #### `cartesian_trajectory.m`
 
-Génère une trajectoire **linéaire dans l'espace cartésien** (l'effecteur suit une ligne droite).
+Generates a **linear Cartesian trajectory** (end-effector follows a straight line).
 
-- **Position :** interpolation linéaire avec lissage cubique
-- **Orientation :** interpolation SLERP (*Spherical Linear Interpolation*) — l'interpolation correcte pour les rotations
-- À chaque point, la cinématique inverse est appelée pour obtenir les angles articulaires
+- **Position:** linear interpolation with cubic smoothing
+- **Orientation:** SLERP (*Spherical Linear Interpolation*) — correct rotation interpolation
+- IK called at each point to obtain joint angles
 
 ```matlab
 traj = cartesian_trajectory(robot, p_start, p_end, R_start, R_end, T_total, dt)
@@ -224,10 +224,10 @@ traj = cartesian_trajectory(robot, p_start, p_end, R_start, R_end, T_total, dt)
 
 #### `plot_trajectory.m`
 
-Visualise une trajectoire générée (articulaire ou cartésienne).
+Visualises a generated trajectory (joint-space or Cartesian).
 
-- Trajectoire **articulaire** : 3 subplots (positions, vitesses, accélérations) en °, °/s, °/s²
-- Trajectoire **cartésienne** : coordonnées XYZ vs temps + chemin 3D
+- **Joint-space** trajectory: 3 subplots (positions, velocities, accelerations) in °, °/s, °/s²
+- **Cartesian** trajectory: XYZ coordinates vs time + 3D path
 
 ```matlab
 plot_trajectory(traj)
@@ -237,20 +237,20 @@ plot_trajectory(traj)
 
 #### `pid_simulation.m`
 
-Simule le **suivi de trajectoire en boucle fermée** par un contrôleur PID + feedforward indépendant sur chaque axe.
+Simulates **closed-loop trajectory tracking** with an independent PID + feedforward controller on each axis.
 
-**Modèle dynamique (paramètres lus depuis `robot.J_eff`, `robot.B_vis`) :**
+**Dynamic model (parameters from `robot.J_eff`, `robot.B_vis`):**
 
 $$J_{eff,i} \cdot \ddot{q}_i = \tau_i - B_{vis,i} \cdot \dot{q}_i$$
 
-**Loi de commande (feedforward + PID) :**
+**Control law (feedforward + PID):**
 
 $$\tau_i = \underbrace{J_{eff,i} \cdot \ddot{q}_{ref} + B_{vis,i} \cdot \dot{q}_{ref}}_{\text{feedforward}} + K_p e_i + K_i \int e_i \, dt + K_d (\dot{q}_{ref} - \dot{q}_i)$$
 
-Protections : anti-windup, saturation des couples, butées articulaires.
-Intégration par méthode de **Heun (RK2)** pour éviter l'accumulation d'erreur de phase.
+Safety: anti-windup, torque saturation, joint limits.
+Integration via **Heun's method (RK2)** to avoid phase error accumulation.
 
-Résultats Phase 1 : RMSE < 0.5° sur tous les axes (θ1, θ3, θ4) et < 0.5 mm sur d2.
+Phase 1 results: RMSE < 0.5° on all axes (θ1, θ3, θ4) and < 0.5 mm on d2.
 
 ```matlab
 result = pid_simulation(robot, traj, Kp, Ki, Kd)
@@ -260,17 +260,17 @@ result = pid_simulation(robot, traj, Kp, Ki, Kd)
 
 #### `animate_robot.m`
 
-Anime le SCARA en 3D le long d'une trajectoire. Reconstruit les points physiques du robot (colonnes verticales, bras horizontaux) pour un rendu réaliste.
+Animates the SCARA in 3D along a trajectory. Reconstructs the physical robot segments (vertical column, horizontal links) for a realistic rendering.
 
 ```matlab
-animate_robot(robot, traj)                 % vitesse normale
-animate_robot(robot, traj, 'speed', 2)     % 2× plus rapide
-animate_robot(robot, traj, 'trail', false) % sans trace de l'effecteur
+animate_robot(robot, traj)                 % normal speed
+animate_robot(robot, traj, 'speed', 2)     % 2× faster
+animate_robot(robot, traj, 'trail', false) % no end-effector trail
 ```
 
 ---
 
-### Flux de données entre les modules
+### Data Flow Between Modules
 
 ```
 robot_parameters
@@ -283,303 +283,302 @@ robot_parameters
        │                    │
        │                    └──► animate_robot
        │
-       └──► main_phase1  (orchestre tout)
+       └──► main_phase1  (orchestrates everything)
 ```
 
-### Critères de réussite Phase 1
+### Phase 1 Success Criteria
 
-- FK : $P_z = d_2 - d_3 - d_4$ toujours négatif (effecteur sous le plan de montage) ✓
-- IK analytique : erreur résiduelle = 0.0000 mm ✓
-- Espace de travail : anneau toroïdal XY, r ∈ [340, 460] mm ✓
-- Suivi PID+FF : RMSE < 0.5° (axes rotoïdes) et < 0.5 mm (axe prismatique) ✓
-
----
+- FK: $P_z = d_2 - d_3 - d_4$ always negative (end-effector below mounting plane) ✓
+- Analytical IK: residual error = 0.0000 mm ✓
+- Workspace: toroidal XY ring, r ∈ [340, 460] mm ✓
+- PID+FF tracking: RMSE < 0.5° (revolute axes) and < 0.5 mm (prismatic axis) ✓
 
 ---
 
-## Phase 2 — Reconnaissance d'objets et estimation de pose
+---
 
-### Prérequis
+## Phase 2 — Object Recognition and Pose Estimation
+
+### Prerequisites
 
 ```bash
 cd python/phase2
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Optionnel — YOLO
+# Optional — YOLO
 pip install ultralytics
 
-# Optionnel — Intel RealSense D4xx (RGB-D)
+# Optional — Intel RealSense D4xx (RGB-D)
 pip install pyrealsense2
 ```
 
-### Lancer le pipeline
+### Run the pipeline
 
 ```bash
-# Générer une planche de marqueurs ArUco à afficher sur téléphone
+# Generate an ArUco marker sheet to display on phone
 python generate_markers.py
 
-# Test sur image statique
+# Test on a static image
 python main_phase2.py --image test_images/test_aruco_scene.jpg --method aruco
 
-# Flux webcam temps réel (ArUco)
-python main_phase2.py --live --method aruco --size 0.08  # marqueur 8 cm
+# Live webcam (ArUco)
+python main_phase2.py --live --method aruco --size 0.08  # 8 cm marker
 
-# Flux RealSense D435 (RGB-D, calibration firmware automatique)
+# RealSense D435 stream (RGB-D, automatic firmware calibration)
 python main_phase2.py --realsense --method aruco --size 0.08
 
-# Flux webcam avec YOLO (modèle pré-entraîné COCO)
+# Webcam with YOLO (pre-trained COCO model)
 python main_phase2.py --live --method yolo --model yolov8n.pt
 
-# Calibration caméra (damier physique requis, inutile avec RealSense)
+# Camera calibration (physical chessboard required, not needed with RealSense)
 python camera_calibration.py --live --rows 6 --cols 9 --size 25
 ```
 
-### Sélectionner la bonne caméra
+### Selecting the right camera
 
 ```bash
-# Lister toutes les caméras disponibles (webcam + RealSense)
+# List all available cameras (webcam + RealSense)
 python main_phase2.py --list-cams
 
-# Sur macOS : index 0 = Continuity Camera (iPhone), index 1 = FaceTime
+# On macOS: index 0 = Continuity Camera (iPhone), index 1 = FaceTime
 python main_phase2.py --live --cam 1 --method aruco
 ```
 
-### RealSense D435 — mode RGB-D
+### RealSense D435 — RGB-D mode
 
-Quand la RealSense est connectée, le pipeline :
-1. Charge les **intrinsèques directement depuis le firmware** (pas besoin de calibration manuelle).
-2. Aligne automatiquement le flux profondeur sur le flux couleur.
-3. Active `estimate_pose_yolo_rgbd()` (YOLO) — déprojection 3D exacte pixel par pixel.
-4. Fournit une carte de profondeur uint16 en mm pour `get_3d_point()`.
+When the RealSense is connected, the pipeline:
+1. Loads **intrinsics directly from firmware** (no manual calibration needed).
+2. Automatically aligns the depth stream onto the colour stream.
+3. Activates `estimate_pose_yolo_rgbd()` (YOLO) — exact per-pixel 3D back-projection.
+4. Provides a uint16 depth map in mm for `get_3d_point()`.
 
 ```bash
-# Test du module RealSense seul
-python realsense_capture.py               # auto_camera() — RealSense si dispo, sinon webcam
-python realsense_capture.py --list        # lister les caméras RealSense
-python realsense_capture.py --cam 1 --z 900  # webcam index 1, plan de travail à 900 mm
+# Test the RealSense module standalone
+python realsense_capture.py               # auto_camera() — RealSense if available, else webcam
+python realsense_capture.py --list        # list RealSense cameras
+python realsense_capture.py --cam 1 --z 900  # webcam index 1, work plane at 900 mm
 ```
 
-Si aucune RealSense n'est connectée et que `--realsense` n'est pas passé, le pipeline
-bascule automatiquement sur `MockRealSense` (webcam + profondeur constante au plan de travail `--z`).
+If no RealSense is connected and `--realsense` is not passed, the pipeline falls back to `MockRealSense` (webcam + constant depth at working plane `--z`).
 
-### Description des modules
+### Module Descriptions
 
 #### `camera_calibration.py`
-Calibration intrinsèque par damier (chessboard). Génère `calibration_data/camera_params.npz` contenant la matrice K (3×3) et les coefficients de distorsion. RMS < 0.5 px = excellente calibration.
+Intrinsic calibration from a chessboard. Generates `calibration_data/camera_params.npz` containing the K matrix (3×3) and distortion coefficients. RMS < 0.5 px = excellent calibration.
 
 #### `detect_objects.py`
-Deux méthodes de détection :
-- **ArUco** — marqueurs imprimés, pose exacte (~0.5 mm), sans apprentissage. Idéal pour tests et calibration.
-- **YOLO** — détection d'objets naturels via YOLOv8 (ultralytics). Nécessite `pip install ultralytics`.
+Two detection methods:
+- **ArUco** — printed markers, exact pose (~0.5 mm), no learning. Ideal for testing and calibration.
+- **YOLO** — natural object detection via YOLOv8 (ultralytics). Requires `pip install ultralytics`.
 
 #### `pose_estimation.py`
-Estimation de la pose 6D (position + orientation) dans le repère caméra :
-- `estimate_pose_aruco()` — solvePnP exact sur les 4 coins du marqueur
-- `estimate_pose_yolo_rgbd()` — position 3D depuis carte de profondeur (RealSense D435)
-- `estimate_pose_yolo_flat()` — reprojection inverse sur plan horizontal connu
+6D pose estimation (position + orientation) in the camera frame:
+- `estimate_pose_aruco()` — exact solvePnP on 4 marker corners
+- `estimate_pose_yolo_rgbd()` — 3D position from depth map (RealSense D435)
+- `estimate_pose_yolo_flat()` — back-projection onto known horizontal plane
 
 #### `robot_transform.py`
-Transformation caméra → repère robot via matrice homogène T (4×4).
-Calibration main-œil (`hand_eye_calibrate()`) ou mesure géométrique directe.
+Camera → robot frame transformation via homogeneous matrix T (4×4).
+Hand-eye calibration (`hand_eye_calibrate()`) or direct geometric measurement.
 
 #### `kalman_tracker.py`
-Filtre de Kalman à modèle vitesse constante. Compense la **latence du pipeline** (~150 ms) en prédisant la position future de l'objet sur le tapis roulant. Tracker multi-objets avec association par plus proche voisin.
+Constant-velocity Kalman filter. Compensates for **pipeline latency (~150 ms)** by predicting the future object position on the conveyor. Multi-object tracker with nearest-neighbour association.
 
 #### `realsense_capture.py`
-Wrapper autour de `pyrealsense2` pour la caméra Intel RealSense D435 (ou D415/D455) :
-- `RealSenseCapture` — flux RGB + profondeur alignés, intrinsèques firmware
-- `MockRealSense` — émulation avec webcam ordinaire (profondeur constante)
-- `auto_camera()` — sélection automatique (RealSense si connectée, sinon webcam)
+Wrapper around `pyrealsense2` for the Intel RealSense D435 (or D415/D455):
+- `RealSenseCapture` — aligned RGB + depth streams, firmware intrinsics
+- `MockRealSense` — ordinary webcam emulation (constant depth)
+- `auto_camera()` — automatic selection (RealSense if connected, otherwise webcam)
 
-### Flux de données Phase 2
+### Phase 2 Data Flow
 
 ```
-Caméra (webcam / RealSense D435)
+Camera (webcam / RealSense D435)
        │
-       ├─ color frame (BGR)
-       └─ depth frame (uint16 mm) ← RealSense uniquement
-       │
-       ▼
-[detect_objects]      → position en pixels
+       ├─ colour frame (BGR)
+       └─ depth frame (uint16 mm) ← RealSense only
        │
        ▼
-[pose_estimation]     → pose 6D dans repère caméra (mm)
-       │              (solvePnP ArUco | déprojection RealSense | plan flat)
-       ▼
-[robot_transform]     → pose dans repère robot (mm)
+[detect_objects]      → pixel position
        │
        ▼
-[kalman_tracker]      → position prédite à t+150ms  ← cible réelle pour la saisie
+[pose_estimation]     → 6D pose in camera frame (mm)
+       │              (solvePnP ArUco | RealSense back-projection | flat plane)
+       ▼
+[robot_transform]     → pose in robot frame (mm)
        │
        ▼
-  Phase 3 : contrôleur visual servoing
+[kalman_tracker]      → predicted position at t+150ms  ← actual pick target
+       │
+       ▼
+  Phase 3: visual servoing controller
 ```
 
-### Critères de réussite Phase 2
+### Phase 2 Success Criteria
 
-- Détection ArUco : 100 % sur marqueurs visibles, latence < 5 ms ✓
-- Pose estimation : erreur résiduelle solvePnP < 1 mm (avec calibration réelle) ✓
-- Kalman : erreur de prédiction à +150 ms < 5 mm pour v < 200 mm/s ✓
+- ArUco detection: 100% on visible markers, latency < 5 ms ✓
+- Pose estimation: solvePnP residual error < 1 mm (with real calibration) ✓
+- Kalman: prediction error at +150 ms < 5 mm for v < 200 mm/s ✓
 
 ---
 
-## Phase 3 — Asservissement visuel PBVS
+## Phase 3 — PBVS Visual Servoing
 
-### Stratégie : PBVS (Position-Based Visual Servoing)
+### Strategy: PBVS (Position-Based Visual Servoing)
 
-L'erreur est définie dans l'espace 3D (repère robot) :
+The error is defined in 3D space (robot frame):
 
-$$e = \begin{bmatrix} t_{courant} - t_{désiré} \\ \theta \cdot u \end{bmatrix} \in \mathbb{R}^6$$
+$$e = \begin{bmatrix} t_{current} - t_{desired} \\ \theta \cdot u \end{bmatrix} \in \mathbb{R}^6$$
 
-Loi de commande (contrôleur intégrateur) :
+Control law (integral controller):
 
 $$v_c = -\lambda(\|e\|) \cdot L_s^+ \cdot e \qquad \dot{q} = J^+(q) \cdot v_c$$
 
-- $L_s = \text{diag}(I_3,\; L_\omega)$ — matrice d'interaction PBVS bloc-diagonale
-- $\lambda(\|e\|)$ — gain adaptatif sigmoïde ($\lambda \in [0.05,\, 1.5]$, inflexion à 10 mm)
-- $J^+(q)$ — pseudo-inverse amortie DLS (robuste aux singularités)
-- Tâche secondaire : évitement des butées articulaires (méthode Liegeois, poids $w_0 = 0.1$)
+- $L_s = \text{diag}(I_3,\; L_\omega)$ — block-diagonal PBVS interaction matrix
+- $\lambda(\|e\|)$ — adaptive sigmoid gain ($\lambda \in [0.05,\, 1.5]$, inflection at 10 mm)
+- $J^+(q)$ — DLS damped pseudo-inverse (robust to singularities)
+- Secondary task: joint limit avoidance (Liegeois method, weight $w_0 = 0.1$)
 
-### Machine à états principale (`PipelineState`)
+### Main State Machine (`PipelineState`)
 
 ```
 SEARCHING → PRE_APPROACH → TRACKING → APPROACH → CONVERGED
-                ↑ (changement de cible >50 mm)       ↓
+                ↑ (target jump >50 mm)               ↓
                 └──────────────────────────────── EMERGENCY
 ```
 
-| État | Déclencheur | Action |
+| State | Trigger | Action |
 |------|-------------|--------|
-| `SEARCHING` | Aucun objet détecté | Robot en repos |
-| `PRE_APPROACH` | Erreur θ1/θ3 > 8° | Interpolation joint-space vers solution IK |
-| `TRACKING` | Objet détecté, \|e\| > 50 mm | VS actif, λ = 1.5 |
-| `APPROACH` | \|e\| < 50 mm | VS fin, λ = 1.0, v_max = 80 mm/s |
-| `CONVERGED` | \|e_t\| < 2 mm et \|e_r\| < 1° | Séquenceur pince activé |
-| `EMERGENCY` | σ_min(J) < seuil | Arrêt d'urgence |
+| `SEARCHING` | No object detected | Robot at rest |
+| `PRE_APPROACH` | θ1/θ3 error > 8° | Joint-space interpolation to IK solution |
+| `TRACKING` | Object detected, \|e\| > 50 mm | VS active, λ = 1.5 |
+| `APPROACH` | \|e\| < 50 mm | Fine VS, λ = 1.0, v_max = 80 mm/s |
+| `CONVERGED` | \|e_t\| < 2 mm and \|e_r\| < 1° | Gripper sequencer activated |
+| `EMERGENCY` | σ_min(J) < threshold | Emergency stop |
 
-### Séquenceur pick-and-place (`PickPlaceState`)
+### Pick-and-Place Sequencer (`PickPlaceState`)
 
 ```
 IDLE → APPROACH → GRASPING → LIFTING → TRANSPORT → LOWERING → RELEASING → RETURNING → DONE
 ```
 
-Déclenchement automatique dès convergence VS. Le TRANSPORT et le RETURNING déclenchent une nouvelle `PRE_APPROACH` si la cible change de plus de 50 mm.
+Automatically triggered on VS convergence. TRANSPORT and RETURNING transitions trigger a new `PRE_APPROACH` when the target changes by more than 50 mm.
 
-### Configuration de repos non-singulière
+### Non-singular Rest Configuration
 
-Le robot démarre à $q_0 = [0°,\; 100\text{mm},\; -45°,\; 0°]$ (θ3 = −45°, r ≈ 430 mm, σ_min = 0.063). Le point θ3 = 0° est singulier (r = 460 mm, σ_min ≈ 0) et est évité par la pré-approche.
+The robot starts at $q_0 = [0°,\; 100\text{mm},\; -45°,\; 0°]$ (θ3 = −45°, r ≈ 430 mm, σ_min = 0.063). The point θ3 = 0° is singular (r = 460 mm, σ_min ≈ 0) and is avoided by the pre-approach.
 
-### Résultats validés (simulation Python)
+### Validated Results (Python simulation)
 
-- Convergence en **≈ 30 frames** depuis position éloignée (après pré-approche)
-- Erreur finale : **< 2 mm** / **< 1°** ✓
-- Workspace effectif : anneau $r \in [340,\; 460]$ mm, angles $\theta_1 \in [\pm 135°]$ (±163° aux limites IK)
-- Cycle pick-and-place complet (APPROACH→DONE) validé en simulation GUI
+- Convergence in **~30 frames** from a far position (after pre-approach)
+- Final error: **< 2 mm** / **< 1°** ✓
+- Effective workspace: ring $r \in [340,\; 460]$ mm, angles $\theta_1 \in [\pm 135°]$ (±163° at IK limits)
+- Full pick-and-place cycle (APPROACH→DONE) validated in GUI simulation
 
-### Lancer la simulation interactive (GUI matplotlib)
+### Run the interactive simulation (matplotlib GUI)
 
 ```bash
 cd python/phase3
 source ../phase2/.venv/bin/activate
 
-# Simulation 2D interactive — clic gauche : objet, clic droit : dépose, ESPACE : start
+# Interactive 2D simulation — left click: place object, right click: deposit, SPACE: start
 python simulation_gui.py
 ```
 
-Contrôles :
-- **Clic gauche** — placer l'objet (zone verte = workspace pixel-exact par calcul IK)
-- **Clic droit** — déplacer la zone de dépose
-- **ESPACE** — démarrer / pause (le bras part en pré-approche puis VS)
-- **R** — réinitialiser
+Controls:
+- **Left click** — place object (green area = workspace pixel-exact by IK computation)
+- **Right click** — move the deposit zone
+- **SPACE** — start / pause (arm goes to pre-approach then VS)
+- **R** — reset
 
-### Lancer le contrôleur réel
+### Run the real controller
 
 ```bash
-# Test cible fixe (bypass caméra) — utile pour valider sans hardware
+# Fixed target (camera bypass) — useful to validate without hardware
 python main_phase3.py --live --cam 1 --force-target 350 50 -150
 
-# Cible "derrière" le robot (nécessite pré-approche)
+# Target "behind" the robot (requires pre-approach)
 python main_phase3.py --live --cam 1 --force-target -300 200 -150
 
-# Flux webcam temps réel (ArUco)
+# Live webcam (ArUco)
 python main_phase3.py --live --cam 1 --method aruco --size 0.08
 
-# Flux RealSense D435
+# RealSense D435
 python main_phase3.py --realsense --method aruco --size 0.05
 
-# Simulation Python boucle fermée (sans caméra)
+# Python closed-loop simulation (no camera)
 python main_phase3.py --sim
 
-# Test sur image statique
+# Test on static image
 python main_phase3.py --image ../phase2/test_images/test_aruco_scene.jpg
 ```
 
-### Lancer la simulation MATLAB (boucle fermée)
+### Run the MATLAB simulation (closed-loop)
 
 ```matlab
 cd matlab/phase3
-main_phase3      % Lance la simulation + affiche 6 graphiques de convergence
+main_phase3      % Runs simulation + displays 6 convergence graphs
 ```
 
-Simulation configurable (paramètres en tête du script) : `use_conveyor`, `v_conveyor`, `lambda_nom`, `dt`, `T_sim`.
+Configurable (parameters at the top of the script): `use_conveyor`, `v_conveyor`, `lambda_nom`, `dt`, `T_sim`.
 
-### Description des modules
+### Module Descriptions
 
 #### `visual_error.py`
-Calcul de l'erreur visuelle $e \in \mathbb{R}^6$ et de la matrice d'interaction $L_s$ :
-- `compute_error(t_cur, R_cur, t_des, R_des)` → `VisualError` (avec `.converged`)
-- `axis_angle(R)` — représentation axe-angle $\theta \cdot u$ (formule de Rodrigues inverse)
-- `interaction_matrix_pbvs(R_co, t_co, R_cd)` — $L_s$ bloc-diagonale exacte (Chaumette 2006)
+Visual error $e \in \mathbb{R}^6$ and interaction matrix $L_s$ computation:
+- `compute_error(t_cur, R_cur, t_des, R_des)` → `VisualError` (with `.converged`)
+- `axis_angle(R)` — axis-angle representation $\theta \cdot u$ (inverse Rodrigues formula)
+- `interaction_matrix_pbvs(R_co, t_co, R_cd)` — exact block-diagonal $L_s$ (Chaumette 2006)
 
 #### `vs_controller.py`
-Contrôleur complet PBVS + cinématique partagée :
-- `ScaraParams` — paramètres géométriques et limites (miroir de `robot_parameters.m`)
-- `ik_solutions(x_m, y_m, params)` — IK analytique SCARA, retourne toutes les solutions (θ1, θ3) dans les limites. Fonction partagée par `main_phase3.py` et `simulation_gui.py`
-- `scara_jacobian(q, params)` — jacobienne analytique $J \in \mathbb{R}^{6 \times 4}$
-- `damped_pinv(J)` — pseudo-inverse DLS, retourne $\sigma_{\min}$ et flag singularité
-- `VSController.update(error, q, dt)` → `VSCommand` (vitesses articulaires + diagnostics)
-- `simulate_pbvs(...)` — simulation Python intégrée (FK + intégrateur Euler)
+Full PBVS controller + shared kinematics:
+- `ScaraParams` — geometric parameters and limits (mirror of `robot_parameters.m`)
+- `ik_solutions(x_m, y_m, params)` — analytical SCARA IK, returns all (θ1, θ3) solutions within limits. Shared by `main_phase3.py` and `simulation_gui.py`
+- `scara_jacobian(q, params)` — analytical Jacobian $J \in \mathbb{R}^{6 \times 4}$
+- `damped_pinv(J)` — DLS pseudo-inverse, returns $\sigma_{\min}$ and singularity flag
+- `VSController.update(error, q, dt)` → `VSCommand` (joint velocities + diagnostics)
+- `simulate_pbvs(...)` — integrated Python simulation (FK + Euler integrator)
 
 #### `gripper_controller.py`
-Séquenceur de la tâche pick-and-place :
-- `GripperController` — modèle pince (OPEN / CLOSING / CLOSED / OPENING), timer d'ouverture/fermeture
-- `PickPlaceSequencer` — machine à 9 états (IDLE → … → DONE), fournit à chaque frame la cible VS et la commande pince
-- `draw_hud(frame)` — superpose l'état courant en overlay BGR sur le frame caméra
-- La cible VS change automatiquement (objet → point d'approche → hauteur levée → dépose → retour home)
+Pick-and-place task sequencer:
+- `GripperController` — gripper model (OPEN / CLOSING / CLOSED / OPENING), open/close timers
+- `PickPlaceSequencer` — 9-state machine (IDLE → … → DONE), provides VS target and gripper command at each frame
+- `draw_hud(frame)` — overlays current state as BGR overlay on camera frame
+- VS target changes automatically (object → approach point → lift height → deposit → home return)
 
 #### `simulation_gui.py`
-Simulation 2D interactive du cycle pick-and-place complet :
-- **Vue XY** — bras SCARA + workspace pixel-exact (masque calculé par IK vectorisé sur grille 320×320)
-- **Vue XZ** — profil de hauteur (levée, transport, abaissement)
-- **Panneau état** — machine à états en temps réel, barre d'erreur |e_t|
-- Pré-approche joint-space intégrée : déclenchée au placement de l'objet *et* automatiquement à chaque changement de cible du séquenceur (pick → dépose → home)
-- L'objet animé suit le bras pendant GRASPING / LIFTING / TRANSPORT / LOWERING
+Interactive 2D simulation of the full pick-and-place cycle:
+- **XY view** — SCARA arm + pixel-exact workspace (mask computed by vectorised IK on 320×320 grid)
+- **XZ view** — height profile (lift, transport, lower)
+- **State panel** — real-time state machine, |e_t| error bar
+- Integrated joint-space pre-approach: triggered at object placement *and* automatically on each sequencer target change (pick → deposit → home)
+- Animated object follows the arm during GRASPING / LIFTING / TRANSPORT / LOWERING
 
 #### `main_phase3.py`
-Orchestration complète Phase 2 + Phase 3 :
-- `Phase3Pipeline` — 6 états : `SEARCHING → PRE_APPROACH → TRACKING → APPROACH → CONVERGED → EMERGENCY`
-- Deux chemins d'entrée : `force_target` (bypass caméra) et pipeline caméra complet (ArUco/YOLO)
-- Pré-approche dans les deux chemins : détecte les sauts de cible du séquenceur ≥ 50 mm
-- `effective_target` — cible calculée depuis `sequencer._target_pos` (pas l'objet brut), évite les blocages en APPROACH lors des transitions LIFTING→TRANSPORT
-- HUD live : état, |e_t|, |e_r|, θ1/d2/θ3/θ4 courants
+Full Phase 2 + Phase 3 orchestration:
+- `Phase3Pipeline` — 6 states: `SEARCHING → PRE_APPROACH → TRACKING → APPROACH → CONVERGED → EMERGENCY`
+- Two input paths: `force_target` (camera bypass) and full camera pipeline (ArUco/YOLO)
+- Pre-approach in both paths: detects sequencer target jumps ≥ 50 mm
+- `effective_target` — target computed from `sequencer._target_pos` (not the raw object), avoids APPROACH freeze during LIFTING→TRANSPORT transitions
+- Live HUD: state, |e_t|, |e_r|, current θ1/d2/θ3/θ4
 
 #### `matlab/phase3/main_phase3.m`
-Script MATLAB de validation en simulation boucle fermée :
-- Supporte le mode tapis roulant (`use_conveyor = true`, `v_conveyor`)
-- Compensation de latence Kalman ($+150$ ms)
-- 6 graphiques : convergence, gain adaptatif, trajectoire XY, config. articulaires, commandes
+MATLAB script for closed-loop simulation validation:
+- Supports conveyor mode (`use_conveyor = true`, `v_conveyor`)
+- Kalman latency compensation ($+150$ ms)
+- 6 graphs: convergence, adaptive gain, XY trajectory, joint configurations, commands
 
-### Flux de données Phase 3
+### Phase 3 Data Flow
 
 ```
 [Phase 2 pipeline]
-  détection + pose 6D → Kalman → t_prédit
+  detection + 6D pose → Kalman → t_predicted
          │
          ▼
-  ik_solutions(t_prédit)
-  → PRE_APPROACH si θ1/θ3 loin (> 8°) de la solution IK
-         │ (pré-approche terminée)
+  ik_solutions(t_predicted)
+  → PRE_APPROACH if θ1/θ3 far (> 8°) from IK solution
+         │ (pre-approach complete)
          ▼
 [visual_error.py]
   compute_error(t_cur, R_cur, t_effective, R_des)
@@ -587,87 +586,89 @@ Script MATLAB de validation en simulation boucle fermée :
          │
          ▼
 [vs_controller.py]
-  VSController.update(e, q) → dq (vitesses articulaires)
+  VSController.update(e, q) → dq (joint velocities)
          │
-         ├──► [gripper_controller.py]  (séquenceur pick-and-place)
-         │         → nouvelle cible → détection saut → nouvelle PRE_APPROACH
+         ├──► [gripper_controller.py]  (pick-and-place sequencer)
+         │         → new target → jump detected → new PRE_APPROACH
          ▼
-  Robot SCARA : q ← q + dq * dt
+  SCARA Robot: q ← q + dq * dt
 ```
 
-### Critères de réussite Phase 3
+### Phase 3 Success Criteria
 
-- Convergence stable depuis toute position initiale dans le workspace ✓
-- Erreur finale < 2 mm / < 1° ✓ (validé en simulation Python)
-- Pré-approche joint-space : atteint θ1 = ±163° sans traverser la singularité θ3 = 0° ✓
-- Cycle pick-and-place complet (9 états) validé en simulation GUI ✓
-- Détection et pré-approche automatique sur chaque changement de cible du séquenceur ✓
-- Détection des singularités + saturation articulaire ✓
-- Support tapis roulant (objet en mouvement) via compensation Kalman ✓
+- Stable convergence from any initial position in the workspace ✓
+- Final error < 2 mm / < 1° ✓ (validated in Python simulation)
+- Joint-space pre-approach: reaches θ1 = ±163° without crossing the θ3 = 0° singularity ✓
+- Full pick-and-place cycle (9 states) validated in GUI simulation ✓
+- Automatic detection and pre-approach on each sequencer target change ✓
+- Singularity detection + joint saturation ✓
+- Conveyor belt support (moving object) via Kalman compensation ✓
 
 ---
 
-- **1 - Thuyetminh_PBL6...pdf** — Rapport SCARA YOLO (source du modèle robot : Table 1 & 2, IK analytique, profils S-curve)
-- **offre-stage.pdf** — Sujet officiel : visual servoing pour pick-and-place dynamique, YOLO + estimation de pose 6D, ROS2 + MoveIt2
-- **Mobile_Manipulator.pdf** — Référence vision stéréo et mécanique bras
+## References
+
+- **1 - Thuyetminh_PBL6...pdf** — SCARA YOLO report (source of robot model: Tables 1 & 2, analytical IK, S-curve profiles)
+- **offre-stage.pdf** — Official subject: visual servoing for dynamic pick-and-place, YOLO + 6D pose estimation, ROS2 + MoveIt2
+- **Mobile_Manipulator.pdf** — Stereo vision and arm mechanics reference
 - Craig, J.J. — *Introduction to Robotics: Mechanics and Control*
 - Chaumette, F. & Hutchinson, S. — *Visual Servo Control* (IEEE Robotics & Automation Magazine, 2006)
 
 ---
 
-## Bilan Phase 3 et prérequis Phase 4
+## Phase 3 Summary and Phase 4 Prerequisites
 
-### Ce qui est couvert en Phase 3
+### What Phase 3 covers
 
-| Composant | Fichier | Statut |
+| Component | File | Status |
 |-----------|---------|--------|
-| Erreur visuelle PBVS + matrice d'interaction | `visual_error.py` | ✅ |
-| Contrôleur VS (DLS, gain adaptatif, butées) | `vs_controller.py` | ✅ |
-| IK analytique partagée | `vs_controller.ik_solutions()` | ✅ |
-| Séquenceur pick-and-place 9 états | `gripper_controller.py` | ✅ |
-| Pré-approche joint-space (toute position initiale) | `main_phase3.py` | ✅ |
-| Pipeline caméra temps réel (ArUco / YOLO / RealSense) | `main_phase3.py` | ✅ |
-| Simulation 2D interactive (workspace pixel-exact) | `simulation_gui.py` | ✅ |
-| Validation MATLAB boucle fermée + tapis roulant | `matlab/phase3/main_phase3.m` | ✅ |
+| PBVS visual error + interaction matrix | `visual_error.py` | ✅ |
+| VS controller (DLS, adaptive gain, joint limits) | `vs_controller.py` | ✅ |
+| Shared analytical IK | `vs_controller.ik_solutions()` | ✅ |
+| 9-state pick-and-place sequencer | `gripper_controller.py` | ✅ |
+| Joint-space pre-approach (any initial position) | `main_phase3.py` | ✅ |
+| Real-time camera pipeline (ArUco / YOLO / RealSense) | `main_phase3.py` | ✅ |
+| Interactive 2D simulation (pixel-exact workspace) | `simulation_gui.py` | ✅ |
+| MATLAB closed-loop + conveyor validation | `matlab/phase3/main_phase3.m` | ✅ |
 
-### Ce qu'il manque avant Phase 4
+### What is missing before Phase 4
 
-| Élément | Priorité | Notes |
+| Element | Priority | Notes |
 |---------|----------|-------|
-| **Modèle URDF/XACRO du SCARA** | Haute | Requis pour Gazebo et MoveIt 2. Peut être généré depuis les paramètres DH de `robot_parameters.m` |
-| **Drivers moteurs et encodeurs** | Haute | Interface `q_current` réel → actuellement simulé dans `main_phase3.py` par intégration d'Euler |
-| **Package ROS 2 (colcon)** | Haute | Wrapping de `Phase3Pipeline.process_frame()` en nœud ROS 2 |
-| **`requirements.txt` phase3** | Basse | Phase 3 utilise le venv de phase2 (`../phase2/.venv`) |
+| **SCARA URDF/XACRO model** | High | Required for Gazebo and MoveIt2. Can be generated from DH parameters in `robot_parameters.m` |
+| **Motor and encoder drivers** | High | `q_current` interface — currently simulated in `main_phase3.py` by Euler integration |
+| **ROS2 package (colcon)** | High | Wrapping `Phase3Pipeline.process_frame()` as a ROS2 node |
+| **phase3 requirements.txt** | Low | Phase 3 uses the phase2 venv (`../phase2/.venv`) |
 
 ---
 
-## Phase 4 — Intégration ROS2 + MoveIt2 + Gazebo
+## Phase 4 — ROS2 + MoveIt2 + Gazebo Integration
 
-### Vue d'ensemble
+### Overview
 
-Phase 4 connecte le pipeline d'asservissement visuel (Phase 3) à ROS2 Humble via :
-- **`scara_description`** — modèle URDF/XACRO du robot SCARA 4-DOF
-- **`scara_moveit_config`** — configuration MoveIt2 (SRDF, IK, contrôleurs, limites)
-- **`scara_visual_servoing`** — nœuds ROS2 encapsulant le pipeline Phase 3
-- **Docker** — environnement ROS2 + Gazebo + MoveIt2 clé en main pour macOS
+Phase 4 connects the visual servoing pipeline (Phase 3) to ROS2 Humble via:
+- **`scara_description`** — URDF/XACRO model of the 4-DOF SCARA robot
+- **`scara_moveit_config`** — MoveIt2 configuration (SRDF, IK, controllers, limits)
+- **`scara_visual_servoing`** — ROS2 nodes wrapping the Phase 3 pipeline
+- **Docker** — turnkey ROS2 + Gazebo + MoveIt2 environment for macOS
 
 ```
 src/
-├── scara_description/         ← URDF/XACRO + launch display
-├── scara_moveit_config/       ← SRDF, kinematics.yaml, contrôleurs, launch MoveIt2
-└── scara_visual_servoing/     ← Nœuds ROS2 VS + simulation Gazebo
+├── scara_description/         ← URDF/XACRO + display launch
+├── scara_moveit_config/       ← SRDF, kinematics.yaml, controllers, MoveIt2 launch
+└── scara_visual_servoing/     ← ROS2 VS nodes + Gazebo simulation
 Dockerfile
 docker-compose.yml
 ```
 
-Architecture des nœuds ROS2 :
+ROS2 node architecture:
 
 ```
 /vs/target_pose  ──────────────────────────────────────────────► [vs_node]
 /joint_states ──────────────────────────────────────────────► [vs_node]
                                                                           │
                                                                   PBVS + DLS
-                                                                  Machine états
+                                                                  State machine
                                                                   TRACKING → CARRYING
                                                                           │
                                    /joint_trajectory_controller/joint_trajectory ◄─┘
@@ -678,13 +679,13 @@ Architecture des nœuds ROS2 :
                          /joint_states   /vs/tcp_pose (30 Hz)
                               │               │
                          [vs_node]     [sim_target_node] → /vs/target_pose
-                                             tapis roulant + set_pose Gazebo
+                                             conveyor belt + Gazebo set_pose
 ```
 
-### Prérequis
-**Natif Linux/WSL2**  
-- Ubuntu 22.04  
-- ROS2 Humble Desktop Full  
+### Prerequisites
+**Native Linux/WSL2**
+- Ubuntu 22.04
+- ROS2 Humble Desktop Full
 - `ros-humble-moveit`, `ros-humble-gazebo-ros2-control`
 
 ---
@@ -692,11 +693,11 @@ Architecture des nœuds ROS2 :
 ### Build Linux / WSL2
 
 ```bash
-# Installer ROS2 Humble + dépendances
+# Install ROS2 Humble + dependencies
 sudo apt install ros-humble-moveit ros-humble-gazebo-ros2-control \
     ros-humble-gazebo-ros-pkgs ros-humble-xacro ros-humble-joint-state-publisher-gui
 
-# Depuis la racine du workspace
+# From workspace root
 source /opt/ros/humble/setup.bash
 rosdep install --from-paths src --ignore-src -y
 
@@ -706,66 +707,66 @@ colcon build --packages-select \
 
 source install/setup.bash
 
-# Vérifier que les packages sont bien installés
+# Verify packages are installed
 ros2 pkg list | grep scara
 ```
 
 ---
 
-### Architecture cinématique dans le URDF
+### Kinematic Architecture in URDF
 
-Le URDF (`scara_robot.urdf.xacro`) reflète exactement les paramètres DH de la Phase 1 :
+The URDF (`scara_robot.urdf.xacro`) exactly mirrors the DH parameters from Phase 1:
 
-| Joint URDF | Type | Axe | Limits | FK |
+| URDF Joint | Type | Axis | Limits | FK |
 |------------|------|-----|--------|----|
 | `joint1` | revolute | +Z | [−135°, +135°] | θ1 |
-| `joint2` | prismatic | +Z | [0, 200 mm] | d2 (Pz ↑ quand d2 ↑) |
-| `joint3` | revolute | +Z | [−90°, +90°] | θ3, origine à (a2=0.3, 0, 0) |
-| `joint4` | revolute | +Z | [−180°, +180°] | θ4, origine à (a3=0.16, 0, −d3=−0.15) |
-| `ee_joint` | fixed | — | — | origine à (0, 0, −d4=−0.059) |
+| `joint2` | prismatic | +Z | [0, 200 mm] | d2 (Pz ↑ when d2 ↑) |
+| `joint3` | revolute | +Z | [−90°, +90°] | θ3, origin at (a2=0.3, 0, 0) |
+| `joint4` | revolute | +Z | [−180°, +180°] | θ4, origin at (a3=0.16, 0, −d3=−0.15) |
+| `ee_joint` | fixed | — | — | origin at (0, 0, −d4=−0.059) |
 
-Vérification FK intégrée :
+FK verification:
 - Px = a2·cos(θ1) + a3·cos(θ1+θ3) ✓
 - Py = a2·sin(θ1) + a3·sin(θ1+θ3) ✓
-- Pz = d2 − d3 − d4 = d2 − 0.209 m ✓ (EE toujours sous le plan de montage)
+- Pz = d2 − d3 − d4 = d2 − 0.209 m ✓ (EE always below mounting plane)
 
 ---
 
-### Topics ROS2 principaux
+### Main ROS2 Topics
 
 | Topic | Type | Direction | Description |
 |-------|------|-----------|-------------|
-| `/joint_states` | `sensor_msgs/JointState` | → vs_node | État articulaire courant (BEST_EFFORT) |
-| `/vs/target_pose` | `geometry_msgs/PoseStamped` | sim_target → vs_node | Pose cible sur le tapis |
-| `/vs/deposit_pose` | `geometry_msgs/PoseStamped` | sim_target → vs_node | Point de dépôt |
+| `/joint_states` | `sensor_msgs/JointState` | → vs_node | Current joint state (BEST_EFFORT) |
+| `/vs/target_pose` | `geometry_msgs/PoseStamped` | sim_target → vs_node | Target pose on belt |
+| `/vs/deposit_pose` | `geometry_msgs/PoseStamped` | sim_target → vs_node | Deposit point |
 | `/vs/status` | `std_msgs/String` | vs_node → | TRACKING / PICKED / CARRYING / DEPOSITED |
-| `/vs/tcp_pose` | `geometry_msgs/PoseStamped` | vs_node → sim_target | Position TCP bras (pour sphère en CARRYING) |
-| `/vs/target_marker` | `visualization_msgs/Marker` | sim_target → | Sphère RViz2 (cible) |
-| `/joint_trajectory_controller/joint_trajectory` | `trajectory_msgs/JointTrajectory` | vs_node → | Commande position |
+| `/vs/tcp_pose` | `geometry_msgs/PoseStamped` | vs_node → sim_target | Arm TCP position (for sphere in CARRYING) |
+| `/vs/target_marker` | `visualization_msgs/Marker` | sim_target → | RViz2 sphere (target) |
+| `/joint_trajectory_controller/joint_trajectory` | `trajectory_msgs/JointTrajectory` | vs_node → | Position command |
 
 ---
 
-### Dépannage
+### Troubleshooting
 
-| Problème | Solution |
+| Problem | Solution |
 |----------|----------|
-| `Cannot open display :0` | `xhost + 127.0.0.1` puis relancer |
-| `joint_trajectory_controller not active` | Attendre ~10 s après lancement Gazebo, ou relancer `gazebo_bridge` |
-| `ModuleNotFoundError: vs_controller` | Vérifier que `python/phase3/` est accessible depuis `/ros2_ws` |
-| `No module named cv_bridge` | `apt install ros-humble-cv-bridge` dans le conteneur |
-| Gazebo ne démarre pas (macOS) | Essayer `headless:=true` + `ros2 launch ... use_sim_time:=true` |
-| `rosdep: package not found` | `rosdep update && rosdep install ...` à l'intérieur du conteneur |
-| Erreur de build colcon | `colcon build --packages-select scara_visual_servoing 2>&1 | tail -30` |
+| `Cannot open display :0` | `xhost + 127.0.0.1` then relaunch |
+| `joint_trajectory_controller not active` | Wait ~10 s after Gazebo launch, or relaunch `gazebo_bridge` |
+| `ModuleNotFoundError: vs_controller` | Check that `python/phase3/` is accessible from `/ros2_ws` |
+| `No module named cv_bridge` | `apt install ros-humble-cv-bridge` inside the container |
+| Gazebo does not start (macOS) | Try `headless:=true` + `ros2 launch ... use_sim_time:=true` |
+| `rosdep: package not found` | `rosdep update && rosdep install ...` inside the container |
+| colcon build error | `colcon build --packages-select scara_visual_servoing 2>&1 | tail -30` |
 
 ---
 
-### Critères de réussite Phase 4
+### Phase 4 Success Criteria
 
-- URDF charge sans erreur dans RViz2 + Gazebo ✓
-- Tous les joints contrôlables via `joint_state_publisher_gui` ✓
-- VS node converge en simulation (|et| < 2 mm) ✅
-- Gazebo + ros2_control : commandes position exécutées correctement ✅
-- FK du URDF = FK analytique de `vs_controller.py` ✅
-- Sphère rouge visible et se déplaçant sur le tapis dans Gazebo ✅
-- Sphère suit le TCP du bras pendant la phase CARRYING ✅
-- Cycle pick-and-place complet (TRACKING → WAIT_PICK → CARRYING → WAIT_DEP) en boucle ✅
+- URDF loads without error in RViz2 + Gazebo ✓
+- All joints controllable via `joint_state_publisher_gui` ✓
+- VS node converges in simulation (|et| < 2 mm) ✅
+- Gazebo + ros2_control: position commands executed correctly ✅
+- URDF FK = analytical FK from `vs_controller.py` ✅
+- Red sphere visible and moving on the belt in Gazebo ✅
+- Sphere follows arm TCP during CARRYING phase ✅
+- Full pick-and-place cycle (TRACKING → WAIT_PICK → CARRYING → WAIT_DEP) looping ✅
