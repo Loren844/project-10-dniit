@@ -6,8 +6,8 @@ plc = snap7.client.Client()
 plc.connect('192.168.0.10', 0, 1)
 
 data = bytearray(12)
-set_dint(data, 0, 5000)
-set_dint(data, 4, 2000)
+set_dint(data, 0, 1000)
+set_dint(data, 4, 5000)
 set_dint(data, 8, 2000)
 plc.write_area(0x83, 0, 16, data)
 
