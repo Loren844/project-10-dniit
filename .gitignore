@@ -4,3 +4,6 @@ yolov8n.pt
 /ros2/build/
 /ros2/install/
 /ros2/log/
+__pycache__/
+python/test_images/
+test_images/
