@@ -523,30 +523,40 @@ def run_live(args):
 
             if automate_connecte:
                 try:
-                    theta1_deg = math.degrees(float(pipeline.q_current[0]))
-                    z_mm = float(pipeline.q_current[1]) * 1000.0
-                    theta3_deg = math.degrees(float(pipeline.q_current[2]))
+                    theta1_deg = float(math.degrees(pipeline.q_current[0]))
+                    z_mm = float(pipeline.q_current[1] * 1000.0)
+                    theta3_deg = float(math.degrees(pipeline.q_current[2]))
+                    theta4_deg = 45.0 
 
-                    pulses_t1 = int(theta1_deg * ratio_deg)
-                    pulses_z = int(z_mm * ratio_mm)
-                    pulses_t3 = int(theta3_deg * ratio_deg)
-
-                    data_coords = bytearray(12)
-                    set_dint(data_coords, 0, pulses_t1)
-                    set_dint(data_coords, 4, pulses_z)
-                    set_dint(data_coords, 8, pulses_t3)
-                    plc.write_area(0x83, 0, 16, data_coords)
-
-                    m2_byte = plc.read_area(0x83, 0, 2, 1)
-                    motor_on = (state != PipelineState.SEARCHING and state != PipelineState.EMERGENCY)
-                    set_bool(m2_byte, 0, 4, motor_on)
-                    set_bool(m2_byte, 0, 6, motor_on)
-                    plc.write_area(0x83, 0, 2, m2_byte)
+                    data_coords = bytearray(32)
+                    
+                    set_real(data_coords, 0, theta1_deg)
+                    set_real(data_coords, 4, z_mm)
+                    set_real(data_coords, 8, theta3_deg)
+                    set_real(data_coords, 12, theta4_deg)
+                    
+                    set_real(data_coords, 16, 22000.0)
+                    set_real(data_coords, 20, 25000.0)
+                    set_real(data_coords, 24, 22000.0)
+                    set_real(data_coords, 28, 1800.0)
+                    
+                    plc.write_area(0x83, 0, 100, data_coords)
 
                     m34_byte = plc.read_area(0x83, 0, 34, 1)
                     gripper_close = pipeline.sequencer.gripper.state.name in ["CLOSED", "CLOSING"]
                     set_bool(m34_byte, 0, 5, gripper_close)
                     plc.write_area(0x83, 0, 34, m34_byte)
+
+                    motor_on = (state != PipelineState.SEARCHING and state != PipelineState.EMERGENCY)
+                    if motor_on:
+                        m50 = bytearray(1)
+                        set_bool(m50, 0, 0, True)
+                        plc.write_area(0x83, 0, 50, m50)
+                        
+                        time.sleep(0.01) 
+                        
+                        set_bool(m50, 0, 0, False)
+                        plc.write_area(0x83, 0, 50, m50)
 
                 except Exception as e:
                     pass
