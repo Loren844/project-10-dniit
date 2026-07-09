@@ -32,6 +32,14 @@ CONVERGE_THR_DEG  = 1.0
 GAIN_TRACKING     = 1.5
 GAIN_APPROACH     = 1.0
 APPROACH_V_MAX    = 0.08
+EMERGENCY_SIGMA_MIN = 1e-4
+TARGET_HOLD_S  = 0.50
+# Bornes larges: couvrent une calibration cam→robot approximative.
+# Seules les cibles vraiment absurdes (> 3 m ou NaN) sont rejetées.
+TARGET_R_MIN_M = 0.01
+TARGET_R_MAX_M = 3.00
+TARGET_Z_MIN_M = -2.00
+TARGET_Z_MAX_M = 2.00
 
 STATE_COLORS = {
     PipelineState.SEARCHING    : (100, 100, 100),
@@ -109,6 +117,8 @@ class Phase3Pipeline:
         self._dbg_t_target = None
         self._dbg_n_confirmed = 0
         self._dbg_frame = 0
+        self._last_valid_target = None
+        self._last_target_seen_t = time.time()
 
         self.sequencer = PickPlaceSequencer(
             drop_pos_m=np.array([0.20, -0.300, -0.100]),
@@ -152,10 +162,7 @@ class Phase3Pipeline:
                 if self._preapproach_goal is None:
                     sols = ik_solutions(float(effective_target[0]), float(effective_target[1]), self.params)
                     if sols:
-                        t1_g, t3_g = min(sols, key=lambda s: abs(s[1]))
-                        d2_g = float(np.clip(effective_target[2] + self.params.d3 + self.params.d4, self.params.q_min[1], self.params.q_max[1]))
-                        q_goal = np.array([t1_g, d2_g, t3_g, 0.0])
-                        diff = np.abs(q_goal[[0, 2]] - self.q_current[[0, 2]])
+                        t1_g, t3_g = min(sols, key=lambda s: (abs(s[1] - self.q_current[2]), -s[1]))
                         if np.max(diff) > np.radians(8.0):
                             self._preapproach_goal = q_goal
 
@@ -194,7 +201,7 @@ class Phase3Pipeline:
 
             cmd = self.ctrl.update(err, self.q_current, dt=self.dt)
             self.commands.append(cmd)
-            if cmd.singular:
+            if cmd.singular and cmd.sigma_min < EMERGENCY_SIGMA_MIN:
                 self.state = PipelineState.EMERGENCY
             self.q_current = np.clip(self.q_current + cmd.dq * self.dt, self.params.q_min, self.params.q_max)
 
@@ -220,16 +227,40 @@ class Phase3Pipeline:
         tracked = self.mot.update(measurements)
         target_pose = None
 
-        if poses_robot:
-            confirmed = [t for t in tracked if t.confirmed]
-            if confirmed:
-                best = min(confirmed, key=lambda t: np.linalg.norm(t.predicted_m))
-                t_target = best.predicted_m
-                R_target = self.R_desired
+        confirmed = [t for t in tracked if t.confirmed]
+        now_t = time.time()
+        t_target = None
+        R_target = self.R_desired
+
+        if confirmed:
+            best = min(confirmed, key=lambda t: np.linalg.norm(t.predicted_m))
+            t_target = best.predicted_m
+            R_target = self.R_desired
+        elif poses_robot:
+            target_pose = poses_robot[0]
+            t_target = target_pose.position_m
+            R_target = target_pose.R_cam
+
+        if t_target is not None:
+            ok, reason = self._check_target(t_target)
+            if ok:
+                self._last_valid_target = t_target.copy()
+                self._last_target_seen_t = now_t
             else:
-                target_pose = poses_robot[0]
-                t_target = target_pose.position_m
-                R_target = target_pose.R_cam
+                import warnings as _w
+                r_ = float(np.linalg.norm(t_target[:2])) * 1000
+                z_ = float(t_target[2]) * 1000
+                _w.warn(
+                    f"Cible rejetée ({reason}): r={r_:.0f}mm z={z_:.0f}mm",
+                    UserWarning, stacklevel=2)
+                t_target = None
+
+        if t_target is None and self._last_valid_target is not None:
+            if (now_t - self._last_target_seen_t) <= TARGET_HOLD_S:
+                t_target = self._last_valid_target.copy()
+                R_target = self.R_desired
+
+        if t_target is not None:
 
             _seq_pre = self.sequencer.state
             if (_seq_pre not in (PickPlaceState.IDLE, PickPlaceState.DONE) and self.sequencer._target_pos is not None):
@@ -242,10 +273,7 @@ class Phase3Pipeline:
                 if self._preapproach_goal is None:
                     sols = ik_solutions(float(_eff_xy[0]), float(_eff_xy[1]), self.params)
                     if sols:
-                        t1_g, t3_g = min(sols, key=lambda s: abs(s[1]))
-                        d2_g = float(np.clip(t_target[2] + self.params.d3 + self.params.d4, self.params.q_min[1], self.params.q_max[1]))
-                        q_goal = np.array([t1_g, d2_g, t3_g, 0.0])
-                        diff = np.abs(q_goal[[0, 2]] - self.q_current[[0, 2]])
+                        t1_g, t3_g = min(sols, key=lambda s: (abs(s[1] - self.q_current[2]), -s[1]))
                         if np.max(diff) > np.radians(8.0):
                             self._preapproach_goal = q_goal
 
@@ -297,7 +325,7 @@ class Phase3Pipeline:
             cmd = self.ctrl.update(err, self.q_current, dt=self.dt)
             self.commands.append(cmd)
 
-            if cmd.singular:
+            if cmd.singular and cmd.sigma_min < EMERGENCY_SIGMA_MIN:
                 self.state = PipelineState.EMERGENCY
 
             self.q_current = np.clip(self.q_current + cmd.dq * self.dt, self.params.q_min, self.params.q_max)
@@ -321,6 +349,23 @@ class Phase3Pipeline:
         py = p.a2 * np.sin(t1) + p.a3 * np.sin(t1 + t3)
         pz = d2 - p.d3 - p.d4
         return np.array([px, py, pz])
+
+    @staticmethod
+    def _check_target(t_target: np.ndarray) -> tuple[bool, str]:
+        """Retourne (True, '') si la cible est plausible, sinon (False, raison)."""
+        if not np.all(np.isfinite(t_target)):
+            return False, "NaN/Inf"
+        r = float(np.linalg.norm(t_target[:2]))
+        z = float(t_target[2])
+        if r < TARGET_R_MIN_M:
+            return False, f"r={r*1000:.0f}mm < {TARGET_R_MIN_M*1000:.0f}mm"
+        if r > TARGET_R_MAX_M:
+            return False, f"r={r*1000:.0f}mm > {TARGET_R_MAX_M*1000:.0f}mm"
+        if z < TARGET_Z_MIN_M:
+            return False, f"z={z*1000:.0f}mm < {TARGET_Z_MIN_M*1000:.0f}mm"
+        if z > TARGET_Z_MAX_M:
+            return False, f"z={z*1000:.0f}mm > {TARGET_Z_MAX_M*1000:.0f}mm"
+        return True, ""
 
     def _current_ee_rotation(self) -> np.ndarray:
         phi = self.q_current[0] + self.q_current[2] + self.q_current[3]

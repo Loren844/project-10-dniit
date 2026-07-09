@@ -76,7 +76,7 @@ The project is divided into **5 sequential phases**. See [plan_stage.md](plan_st
 | **2** | Object recognition and pose estimation (Python, OpenCV) | ✅ Completed |
 | **3** | PBVS visual servoing (Python + MATLAB) | ✅ Completed |
 | **4** | ROS2 + Gazebo Ignition Fortress integration — pick-and-place simulation | ✅ Completed |
-| **5** | Experimental tests on real robot (YOLO vision + Siemens PLC) | 🚧 In progress |
+| **5** | Real robot: YOLO vision + Siemens S7-1200 PLC (snap7, TIA Portal, HB860C drivers) | 🚧 In progress — software complete, hardware integration pending |
 
 ---
 
@@ -770,3 +770,143 @@ FK verification:
 - Red sphere visible and moving on the belt in Gazebo ✅
 - Sphere follows arm TCP during CARRYING phase ✅
 - Full pick-and-place cycle (TRACKING → WAIT_PICK → CARRYING → WAIT_DEP) looping ✅
+
+---
+
+## Phase 5 — Real Robot: YOLO Vision + Siemens PLC (S7-1200)
+
+### Overview
+
+Phase 5 bridges the simulation stack to the physical SCARA robot. The Ubuntu PC (ROS2) acts as the "brain" — it runs YOLO detection, computes IK, and writes joint setpoints directly into the PLC memory over Ethernet. The Siemens S7-1200 PLC acts as the "muscles" — it reads those setpoints, generates smooth S-curve acceleration ramps (PTO technology objects), and sends pulse trains to the HB860C stepper drivers.
+
+```
+[Ubuntu PC — ROS2 / Python]
+   vision_node.py            ← YOLO detection + IK + snap7 write
+         │  Ethernet (192.168.0.10)
+         ▼
+[Siemens S7-1200 — TIA Portal V17]
+   DB1 (data exchange block)
+   OB1 (SCL — Stop-and-Pick logic)
+   Axe_Epaule / Axe_Z / Axe_Coude  ← TO_PositioningAxis (PTO)
+         │
+   HB860C drivers (PTO pulse + direction signals)
+         │
+   Stepper motors (axis 1, axis 2, axis 3)
+```
+
+### Hardware Architecture
+
+| Component | Description |
+|-----------|-------------|
+| Siemens S7-1200 | PLC — motion controller |
+| HB860C × 3 | Stepper motor drivers (Axis 1, 2, 3) |
+| HB860C × 1 | Driver DC.L4 (Axis 4 — gripper rotation, **not yet wired**) |
+| Intel RealSense D435 | RGB-D camera, firmware intrinsics, auto depth alignment |
+| Ubuntu 22.04 + ROS2 Humble | Vision + IK compute host |
+
+### PLC Wiring (`branchements.md`)
+
+PTO wiring from S7-1200 digital outputs to HB860C drivers:
+
+| Axis | PLC Output (Pulse) | PLC Output (Direction) | Driver |
+|------|--------------------|------------------------|--------|
+| 1 — Shoulder (θ1) | `%Q0.0` | `%Q0.1` | DC.L1 (large blue box, right) |
+| 2 — Vertical Z (d2) | `%Q0.2` | `%Q0.3` | DC.L2 (large blue box, centre) |
+| 3 — Elbow (θ3) | `%Q0.4` | `%Q0.5` | DC.L3 (large blue box, left) |
+| Conveyor belt motor | `%Q0.6` | — | Relay / contactor |
+
+**Return (0 V) wiring:** wire `1M` (PLC) → `PUL−` on each driver, then bridge `PUL−` ↔ `DIR−` locally on each driver.
+
+**Not yet wired:** Axis 4 (DC.L4, gripper rotation). The energy power strip (+VDC / GND) is already daisy-chained on all drivers.
+
+### PLC Software — TIA Portal V17 (`PLC_part.md`)
+
+**Three Technology Objects (TO_PositioningAxis):**
+
+| TIA Object | Axis | Unit |
+|------------|------|------|
+| `Axe_Epaule` | Shoulder (θ1) | Degrees |
+| `Axe_Z` | Vertical (d2) | Millimetres |
+| `Axe_Coude` | Elbow (θ3) | Degrees |
+
+**Data Block DB1 — Python ↔ PLC exchange:**
+
+| Variable | Type | Offset | Role |
+|----------|------|--------|------|
+| `Cible_Theta1` | Real | 0 | Shoulder target (°) from ROS2 |
+| `Cible_Z` | Real | 4 | Height target (mm) from ROS2 |
+| `Cible_Theta3` | Real | 8 | Elbow target (°) from ROS2 |
+| `Etat_Robot` | DInt | 12 | Cycle phase (0 = Tracking, 1 = Pick, …) |
+| `Ancien_Etat` | DInt | 16 | Previous state (internal change detection) |
+
+**OB1 strategy (Stop-and-Pick in SCL):**
+1. Belt runs while `Etat_Robot = 0` and `Motor_On = 1`.
+2. On a state change, the PLC generates a 250-cycle extended pulse on `%MW10` to trigger all three `MC_MoveAbsolute` blocks reliably.
+3. `MC_MoveAbsolute` sends the robot to `Cible_Theta1`, `Cible_Z`, `Cible_Theta3`.
+4. Once the object is deposited, `Etat_Robot` returns to 0 and the belt restarts.
+
+### ROS2 Vision Node (`vision_node.py`)
+
+```python
+# Minimal example of what vision_node does
+model = YOLO('yolov8n.pt')
+plc   = snap7.client.Client()
+plc.connect('192.168.0.10', 0, 1)   # S7-1200
+
+# On each camera frame:
+#   detect object (YOLO)  →  estimate world position (pinhole)
+#   →  write (Cible_Theta1, Cible_Z, Cible_Theta3) to DB1 via snap7
+```
+
+Targets COCO classes 32 (sports ball), 47 (apple), 49 (orange) as pick objects.
+Camera-to-robot transform uses a fixed offset (`cam_x = 0.55 m`, `cam_y = 0 m`, `z_dist = 0.75 m`).
+
+### Desktop GUI (`gui_robot.py`)
+
+`gui_robot.py` is a **customtkinter** desktop application (fusion of manual control + visual servoing):
+
+- **Manual jog panel** — direct joint position commands sent to PLC via snap7
+- **Visual servoing panel** — runs Phase 3 PBVS pipeline live, writes results to PLC
+- **Calibration dialog** — intrinsic camera calibration from live feed
+- **Robot transform dialog** — adjust camera-to-robot extrinsic matrix T
+- **Live camera feed** — optional YOLO overlay (requires `opencv-python` + `ultralytics`)
+
+```bash
+# From workspace root (env already activated)
+python gui_robot.py
+# PLC IP, camera index, and snap7 parameters are loaded from gui_robot_config.json
+```
+
+### Commissioning Procedure
+
+1. Start ROS2 on Ubuntu: `ros2 launch scara_visual_servoing gazebo_sim.launch.py` (or the hardware launch). Terminal should print `CONNECTED TO PLC`.
+2. Open TIA Portal → go **online** → open the **Watch table** for DB1.
+3. Set `Motor_On = 1` (belt starts if no object is visible).
+4. Set `Init_Position = 1` then back to `0` — verify all 3 axes show "Homed" in diagnostics.
+5. The system is now fully autonomous.
+
+### What Has Been Done
+
+| Component | Status |
+|-----------|--------|
+| Hardware wiring plan (`branchements.md`) | ✅ Documented |
+| TIA Portal configuration (DB1, 3 × TO_PositioningAxis) | ✅ Documented |
+| OB1 SCL program (Stop-and-Pick logic) | ✅ Written |
+| `vision_node.py` — YOLO + snap7 write | ✅ Implemented |
+| `gui_robot.py` — desktop control panel (manual + VS) | ✅ Implemented |
+| `gui_robot_config.json` — PLC / camera configuration file | ✅ Present |
+| snap7 Ethernet communication to S7-1200 | ✅ Tested in simulation |
+
+### What Is Still Missing / To Do
+
+| Element | Priority | Notes |
+|---------|----------|-------|
+| **Physical robot wiring** (Axis 4 — gripper) | High | DC.L4 driver not yet connected |
+| **Hand-eye calibration on real hardware** | High | `hand_eye_collect.py` exists in phase2 but not integrated into Phase 5 launch; current `cam_x/cam_y` values are estimates |
+| **Homing sensors / limit switches** | High | Encoders and end-stops not confirmed wired; homing relies on `MC_Home` with manual zero |
+| **Real-hardware ROS2 launch file** | High | `gazebo_sim.launch.py` targets Gazebo — a dedicated `hardware.launch.py` (without Gazebo, with real `/joint_states` from encoders) is missing |
+| **Full end-to-end integration test** | High | Pipeline ROS2 → YOLO → snap7 → PLC → stepper motors not yet validated on the physical robot |
+| **Gripper actuator control** (pneumatic / servo) | Medium | `gripper_controller.py` logic exists; physical gripper driver wiring not done |
+| **`vision_node.py` IK integration** | Medium | Currently writes raw world-coordinate estimates; IK (`ik_solutions()` from `vs_controller.py`) should be called to convert to `Cible_Theta1` / `Cible_Theta3` before writing to DB1 |
+| **Conveyor speed calibration** | Low | Belt speed constant not measured; Kalman filter `v_conveyor` not tuned for real belt |
+| **Error handling in snap7 write loop** | Low | PLC disconnect during run not gracefully handled in `vision_node.py` |
