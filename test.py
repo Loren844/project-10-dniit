@@ -13,7 +13,7 @@ def main():
         set_real(data, 0, -2000.0)
         set_real(data, 4, 2000.0)
         set_real(data, 8, -3000.0)
-        set_real(data, 12, 200.0)
+        set_real(data, 12, 1000.0)
         
         set_real(data, 16, 22000.0)
         set_real(data, 20, 25000.0)

@@ -17,7 +17,7 @@ Arguments :
     --cam          INT    Index caméra (défaut 0)
     --marker-id    INT    ID du marqueur ArUco sur l'effecteur (défaut 0)
     --marker-size  FLOAT  Taille du marqueur en mètres (défaut 0.06)
-    --calib        FILE   Chemin camera_params.npz (défaut calibration_data/camera_params.npz)
+    --calib        FILE   Chemin cam_to_robot.npz (défaut calibration_data/cam_to_robot.npz)
     --output       FILE   Fichier de sortie (défaut calibration_data/cam_to_robot.npz)
 """
 
@@ -78,7 +78,7 @@ def detect_and_pose(frame: np.ndarray, cam_params: dict,
     Détecte le marqueur ArUco et retourne (R_target2cam, t_target2cam) ou None.
     """
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    aruco_dict   = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
+    aruco_dict   = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
     aruco_params = cv2.aruco.DetectorParameters()
     detector     = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
 
@@ -113,16 +113,16 @@ def detect_and_pose(frame: np.ndarray, cam_params: dict,
 # ── Interface ────────────────────────────────────────────────────────────────
 
 def ask_robot_pose() -> tuple[float, float, float, float] | None:
-    """Demande à l'opérateur les valeurs articulaires actuelles."""
+    """Demande à l'opérateur les coordonnées cartésiennes XYZ + angle poignet lus sur la PLC."""
     print("\n╔══════════════════════════════════════════════╗")
     print("║  Lire sur la PLC les valeurs actuelles :     ║")
     print("╚══════════════════════════════════════════════╝")
     try:
-        t1  = float(input("  θ1 (J1, degrés)  : "))
-        d2  = float(input("  Z  (mm)          : "))
-        t3  = float(input("  θ2 (J2, degrés)  : "))
-        t4  = float(input("  θ4 (degrés, 0 si inconnu) : "))
-        return t1, d2, t3, t4
+        x   = float(input("  X (mm)              : "))
+        y   = float(input("  Y (mm)              : "))
+        z   = float(input("  Z (mm)              : "))
+        rz  = float(input("  θ poignet (degrés)  : "))
+        return x, y, z, rz
     except (ValueError, KeyboardInterrupt):
         return None
 
@@ -148,12 +148,13 @@ def main():
     ap.add_argument("--cam",         type=int,   default=0)
     ap.add_argument("--marker-id",   type=int,   default=0)
     ap.add_argument("--marker-size", type=float, default=0.06)
-    ap.add_argument("--calib",   default=os.path.join(_HERE, "calibration_data", "camera_params.npz"))
+    ap.add_argument("--calib",   default=os.path.join(_HERE, "calibration_data", "cam_to_robot.npz"))
     ap.add_argument("--output",  default=os.path.join(_HERE, "calibration_data", "cam_to_robot.npz"))
+    ap.add_argument("--samples", default=os.path.join(_HERE, "calibration_data", "handeye_samples.npz"))
     args = ap.parse_args()
 
     if not os.path.exists(args.calib):
-        print(f"[ERREUR] camera_params.npz introuvable: {args.calib}")
+        print(f"[ERREUR] cam_to_robot.npz introuvable: {args.calib}")
         print("→ Fais d'abord la calibration intrinsèque depuis l'interface GUI.")
         sys.exit(1)
 
@@ -169,6 +170,15 @@ def main():
     t_gripper2base = []
     R_target2cam   = []
     t_target2cam   = []
+
+    # Recharge les captures précédentes si elles existent
+    if os.path.exists(args.samples):
+        data = np.load(args.samples, allow_pickle=True)
+        R_gripper2base = list(data["R_g2b"])
+        t_gripper2base = list(data["t_g2b"])
+        R_target2cam   = list(data["R_t2c"])
+        t_target2cam   = list(data["t_t2c"])
+        print(f"[OK] {len(R_gripper2base)} captures rechargées depuis {args.samples}")
 
     MIN_SAMPLES = 8
     print(f"\n[INFO] Cible: marqueur ArUco ID={args.marker_id}, taille={args.marker_size*1000:.0f} mm")
@@ -210,10 +220,13 @@ def main():
             if robot_pose is None:
                 continue
 
-            t1, d2, t3, t4 = robot_pose
-            T_g2b = fk_scara(t1, t3, d2, t4)
-            R_g2b = T_g2b[:3, :3]
-            t_g2b = T_g2b[:3, 3]
+            x_mm, y_mm, z_mm, rz_deg = robot_pose
+            angle = np.radians(rz_deg)
+            c, s = np.cos(angle), np.sin(angle)
+            R_g2b = np.array([[c, -s, 0],
+                               [s,  c, 0],
+                               [0,  0, 1]])
+            t_g2b = np.array([x_mm / 1000.0, y_mm / 1000.0, z_mm / 1000.0])
 
             R_t2c, t_t2c = last_pose
             R_gripper2base.append(R_g2b)
@@ -222,7 +235,12 @@ def main():
             t_target2cam.append(t_t2c.reshape(3, 1))
 
             n = len(R_gripper2base)
-            print(f"  [✓] Capture {n} enregistrée (T1={t1:.1f}° Z={d2:.0f}mm T2={t3:.1f}°)")
+            # Sauvegarde automatique après chaque capture
+            os.makedirs(os.path.dirname(args.samples), exist_ok=True)
+            np.savez(args.samples,
+                     R_g2b=np.array(R_gripper2base), t_g2b=np.array(t_gripper2base),
+                     R_t2c=np.array(R_target2cam),   t_t2c=np.array(t_target2cam))
+            print(f"  [✓] Capture {n} enregistrée (X={x_mm:.1f}mm Y={y_mm:.1f}mm Z={z_mm:.1f}mm θ={rz_deg:.1f}°)")
             if n >= MIN_SAMPLES:
                 print(f"  → {n} captures disponibles. Appuie sur 'c' pour calibrer.")
 
@@ -244,8 +262,10 @@ def main():
                 print(f"\n[✓] Fichier enregistré : {args.output}")
                 print("[✓] Relance l'application GUI pour utiliser la nouvelle calibration.")
             except Exception as e:
+                import traceback
                 print(f"[ERREUR] Calibration échouée: {e}")
-            break
+                traceback.print_exc()
+                continue
 
     cap.release()
     cv2.destroyAllWindows()

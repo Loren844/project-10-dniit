@@ -46,8 +46,12 @@ class RobotTransform:
     ---------
     T : np.ndarray (4, 4)
         Matrice homogène caméra → robot
+    H : np.ndarray (3, 3) | None
+        Homographie directe pixel → robot XY (mm). Plus précise que T
+        quand K est auto-estimée. Produite par calibrate_camera.py.
     """
-    T: np.ndarray   # (4, 4)
+    T: np.ndarray          # (4, 4)
+    H: np.ndarray = None   # (3, 3) pixel → robot mm, optionnel
 
     def transform(self, pose_cam: Pose6D) -> Pose6D:
         """
@@ -74,6 +78,14 @@ class RobotTransform:
         """
         p_h = np.append(point_cam, 1.0)
         return (self.T @ p_h)[:3]
+
+    def transform_pixel(self, u: float, v: float, z_robot_m: float = 0.0) -> np.ndarray:
+        """Convertit un pixel (u,v) en position robot [x,y,z] en mètres via H."""
+        if self.H is None:
+            raise ValueError("Homographie H non disponible — calibrez avec calibrate_camera.py")
+        p = self.H @ np.array([u, v, 1.0], dtype=float)
+        p /= p[2]
+        return np.array([p[0] / 1000.0, p[1] / 1000.0, z_robot_m])
 
     def inverse(self) -> "RobotTransform":
         """Retourne la transformation inverse (robot → caméra)."""
@@ -195,7 +207,8 @@ def save_transform(tf: RobotTransform, path: str):
 
 def load_transform(path: str) -> RobotTransform:
     data = np.load(path)
-    return RobotTransform(T=data["T"])
+    H = data["H"] if "H" in data else None
+    return RobotTransform(T=data["T"], H=H)
 
 
 def print_transform_report(tf: RobotTransform):

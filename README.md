@@ -365,7 +365,7 @@ If no RealSense is connected and `--realsense` is not passed, the pipeline falls
 ### Module Descriptions
 
 #### `camera_calibration.py`
-Intrinsic calibration from a chessboard. Generates `calibration_data/camera_params.npz` containing the K matrix (3×3) and distortion coefficients. RMS < 0.5 px = excellent calibration.
+Intrinsic calibration from a chessboard. Generates `calibration_data/cam_to_robot.npz` containing the K matrix (3×3) and distortion coefficients. RMS < 0.5 px = excellent calibration.
 
 #### `detect_objects.py`
 Two detection methods:

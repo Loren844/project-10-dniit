@@ -57,16 +57,16 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 # ── Paramètres robot ──────────────────────────────────────────────────────────
-L1, L2, Z_AMP = 150, 110, 80
-J1_SCALE = 25000 / math.radians(170)
-J2_SCALE = 25000 / math.radians(135)
-Z_SCALE  = 25000 / Z_AMP
+L1, L2 = 150, 180
+J1_SCALE = 25000 / math.radians(90)
+J2_SCALE = 7500 / math.radians(90)
+Z_SCALE  = 95000 / 55.0
 J4_SCALE = 2000  / math.radians(180)
 
 AXIS_COLORS  = ['#e94560', '#ff8c42', '#00d4ff', '#a855f7']
 AXIS_NAMES   = ["J1 — Épaule", "J2 — Coude", "Z — Hauteur", "J4 — Orient."]
 SPEED_NAMES  = ["J1", "J2", "Z", "J4"]
-LIMITS       = [(-16000., 20000.), (-11000., 11000.),
+LIMITS       = [(-16000., 25000.), (-11000., 11000.),
                 (-6000., 9500.), (-2000., 2300.)]
 INIT_POS     = [0.0, 0.0, 0.0, 0.0]
 INIT_SPEEDS  = [22000., 25000., 22000., 1800.]
@@ -86,10 +86,10 @@ def enc_to_physical(enc):
 class CalibrationDialog(ctk.CTkToplevel):
     """Fenêtre de calibration de la caméra par damier."""
 
-    # Drapeaux OpenCV : détection rapide + normalisation + seuillage adaptatif
+    # Drapeaux OpenCV : normalisation + seuillage adaptatif
+    # FAST_CHECK volontairement absent : trop de faux-négatifs sur certains éclairages
     _FLAGS = (cv2.CALIB_CB_ADAPTIVE_THRESH
-              | cv2.CALIB_CB_NORMALIZE_IMAGE
-              | cv2.CALIB_CB_FAST_CHECK)
+              | cv2.CALIB_CB_NORMALIZE_IMAGE)
 
     def __init__(self, parent, cam_idx: int):
         super().__init__(parent)
@@ -222,6 +222,23 @@ class CalibrationDialog(ctk.CTkToplevel):
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         return clahe.apply(gray)
 
+    @classmethod
+    def _find_board(cls, gray, enhanced, board):
+        """Essaie plusieurs combinaisons de drapeaux pour trouver le damier."""
+        candidates = [
+            (enhanced, cls._FLAGS),
+            (gray,     cls._FLAGS),
+            (enhanced, cv2.CALIB_CB_ADAPTIVE_THRESH),
+            (gray,     cv2.CALIB_CB_ADAPTIVE_THRESH),
+            (enhanced, cv2.CALIB_CB_NORMALIZE_IMAGE),
+            (gray,     0),
+        ]
+        for img, flags in candidates:
+            found, corners = cv2.findChessboardCorners(img, board, flags)
+            if found:
+                return True, corners
+        return False, None
+
     def _poll(self):
         if not self._running or self._cap is None:
             return
@@ -230,7 +247,7 @@ class CalibrationDialog(ctk.CTkToplevel):
             board = self._board
             gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             enhanced = self._preprocess(gray)
-            found, corners = cv2.findChessboardCorners(enhanced, board, self._FLAGS)
+            found, corners = self._find_board(gray, enhanced, board)
             disp  = frame.copy()
             if found:
                 cv2.drawChessboardCorners(disp, board, corners, True)
@@ -260,7 +277,7 @@ class CalibrationDialog(ctk.CTkToplevel):
         board = self._board
         gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         enhanced = self._preprocess(gray)
-        found, _ = cv2.findChessboardCorners(enhanced, board, self._FLAGS)
+        found, _ = self._find_board(gray, enhanced, board)
         if found:
             self._frames.append(frame.copy())
             n = len(self._frames)
@@ -288,7 +305,7 @@ class CalibrationDialog(ctk.CTkToplevel):
             for frame in self._frames:
                 gray     = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 enhanced = self._preprocess(gray)
-                ok, corners = cv2.findChessboardCorners(enhanced, board, self._FLAGS)
+                ok, corners = self._find_board(gray, enhanced, board)
                 if ok:
                     corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1,-1), crit)
                     obj_pts.append(objp)
@@ -484,6 +501,7 @@ class SCARAControlPanel:
         self._vs_method    = tk.StringVar(value="aruco")
         self._vs_marker_sz = tk.StringVar(value="0.035")
         self._vs_work_z    = tk.StringVar(value="0.80")
+        self._vs_work_z_robot = tk.StringVar(value="0.0")   # Z cible en repère robot (m)
         self._vs_gain         = tk.DoubleVar(value=0.5)
         self._vs_adaptive     = tk.BooleanVar(value=True)
         self._vs_speed_ratio  = tk.DoubleVar(value=0.20)          # fraction vitesse manuelle
@@ -977,7 +995,8 @@ class SCARAControlPanel:
         params.grid_columnconfigure(1, weight=1)
         for r, (lbl, var) in enumerate([
             ("Taille marqueur (m) :", self._vs_marker_sz),
-            ("Plan de travail Z (m) :", self._vs_work_z),
+            ("Plan de travail Z cam (m) :", self._vs_work_z),
+            ("Z cible robot (m, NaN=auto) :", self._vs_work_z_robot),
         ]):
             ctk.CTkLabel(params, text=lbl, font=ctk.CTkFont("Segoe UI", 9),
                          text_color="gray").grid(row=r, column=0, sticky="w", pady=2)
@@ -1149,6 +1168,13 @@ class SCARAControlPanel:
             "INFO",
         )
         self._vs_last_plc_pos = None
+        # Pré-charger Z depuis la PLC pour éviter d'envoyer Z=0 au premier cycle
+        if self.connected:
+            try:
+                _raw = self._plc_read_area(0x83, 0, 100, 16)
+                self._vs_last_plc_pos = [get_real(_raw, i * 4) for i in range(4)]
+            except Exception:
+                pass
         while not self._frame_q.empty():
             try: self._frame_q.get_nowait()
             except Exception: break
@@ -1201,6 +1227,8 @@ class SCARAControlPanel:
                 method       = actual_method,
                 marker_size  = float(self._vs_marker_sz.get()),
                 work_plane_z = float(self._vs_work_z.get()),
+                work_plane_z_robot = (None if self._vs_work_z_robot.get().strip().lower() in ('nan', '', 'none', 'auto')
+                                      else float(self._vs_work_z_robot.get())),
                 yolo_model   = self._vs_yolo_mdl.get() if actual_method == "yolo" else None,
                 force_target = ft,
                 dt           = 1.0 / 30,
@@ -1322,6 +1350,10 @@ class SCARAControlPanel:
                             continue
                         q = pipeline.q_current
                         plc_pos = list(self._pipeline_q_to_plc_pos(q))
+
+                        # Z gelé à la valeur PLC courante — le VS ne commande que XY
+                        if self._vs_last_plc_pos is not None:
+                            plc_pos[1] = self._vs_last_plc_pos[1]
 
                         # ── Sécurité 1 : clamp aux limites mécaniques ──────
                         # Ordre PLC : [J1, Z, J2, J4]
@@ -1843,6 +1875,7 @@ class SCARAControlPanel:
             self._vs_method.set(str(cfg.get("vs_method", self._vs_method.get())))
             self._vs_marker_sz.set(str(cfg.get("vs_marker_sz", self._vs_marker_sz.get())))
             self._vs_work_z.set(str(cfg.get("vs_work_z", self._vs_work_z.get())))
+            self._vs_work_z_robot.set(str(cfg.get("vs_work_z_robot", self._vs_work_z_robot.get())))
             self._vs_yolo_mdl.set(str(cfg.get("vs_yolo_mdl", self._vs_yolo_mdl.get())))
             self._vs_ft_x.set(str(cfg.get("vs_ft_x", self._vs_ft_x.get())))
             self._vs_ft_y.set(str(cfg.get("vs_ft_y", self._vs_ft_y.get())))
@@ -1871,6 +1904,7 @@ class SCARAControlPanel:
             "vs_method": self._vs_method.get(),
             "vs_marker_sz": self._vs_marker_sz.get(),
             "vs_work_z": self._vs_work_z.get(),
+            "vs_work_z_robot": self._vs_work_z_robot.get(),
             "vs_yolo_mdl": self._vs_yolo_mdl.get(),
             "vs_ft_x": self._vs_ft_x.get(),
             "vs_ft_y": self._vs_ft_y.get(),

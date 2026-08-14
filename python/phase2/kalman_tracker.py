@@ -213,7 +213,7 @@ class Track:
     missed:     int = 0            # Nombre de frames consécutives sans détection
     confirmed:  bool = False       # True après N_CONFIRM mises à jour
 
-    N_CONFIRM = 3   # Mises à jour minimum avant de considérer un track fiable
+    N_CONFIRM = 5   # Mises à jour minimum avant de considérer un track fiable
 
 
 @dataclass

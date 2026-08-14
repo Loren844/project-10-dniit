@@ -53,12 +53,12 @@ Optional: `ultralytics` (YOLO), `pyrealsense2` (RealSense D435).
 
 #### `camera_calibration.py`
 Intrinsic calibration from a chessboard pattern.
-Produces `calibration_data/camera_params.npz` containing the K matrix (3×3) and distortion coefficients.
+Produces `calibration_data/cam_to_robot.npz` containing the K matrix (3×3) and distortion coefficients.
 RMS < 0.5 px = excellent calibration.
 Not needed with a RealSense D435 (parameters read from firmware).
 
 ```python
-load_calibration("calibration_data/camera_params.npz")  # → dict {K, dist}
+load_calibration("calibration_data/cam_to_robot.npz")  # → dict {K, dist}
 ```
 
 #### `detect_objects.py`
